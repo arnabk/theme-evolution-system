@@ -25,6 +25,7 @@ docker-compose up
 - [Testing Guide](docs/testing.md) - Testing and coverage
 - [Evaluation Framework](docs/evaluation.md) - Evaluation criteria
 - [Project Proposal](docs/project_proposal.md) - Project overview and objectives
+- [Progress Report](docs/progress_report.md) - Current progress, remaining tasks, and challenges
 
 ## Requirements
 

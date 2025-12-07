@@ -1,33 +1,43 @@
 # Theme Evolution System
 
-A scalable system that solves **large-scale batch processing with several million responses exceeding LLM context windows** by intelligently chunking datasets, maintaining theme consistency across batches, and evolving themes over time using vector-based similarity matching.
+**AI-Powered Theme Evolution:** Intelligently extract and evolve themes from survey responses using LLM analysis and semantic similarity.
+
+**Tech Stack:** Next.js 15 + TypeScript + React + TypeORM + SQLite + Ollama + Bun
+
+**100% TypeScript • Zero Python • Lightning Fast ⚡**
+
+---
 
 ## Quick Start
 
 ```bash
-# One-command setup (downloads models, sets up database, launches UI)
-docker-compose up
+# 1. Install Ollama and models
+brew install ollama
+ollama serve  # Keep running in a terminal
+
+# 2. In a new terminal, pull models
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+
+# 3. Install dependencies & start app
+bun install
+bun dev
 ```
 
-**What happens automatically:**
-- 🗄️ PostgreSQL with pgvector extension
-- 🤖 Ollama with Llama 3.1 and nomic-embed-text models
-- 📊 Database schema setup
-- 🌐 Streamlit UI at http://localhost:8501
+**Access:** http://localhost:3000
+
+---
 
 ## Documentation
 
-- [Setup Guide](docs/setup.md) - Installation and configuration
-- [Architecture](docs/architecture.md) - System design and components  
-- [Usage Guide](docs/usage.md) - How to use the system
-- [Database Schema](docs/database_schema.md) - Database design and tables
-- [API Reference](docs/api_reference.md) - Module documentation
-- [Testing Guide](docs/testing.md) - Testing and coverage
-- [Evaluation Framework](docs/evaluation.md) - Evaluation criteria
-- [Project Proposal](docs/project_proposal.md) - Project overview and objectives
-- [Progress Report](docs/progress_report.md) - Current progress, remaining tasks, and challenges
+- **[Setup Guide](docs/setup.md)** - Installation and configuration
+- **[Usage Guide](docs/usage.md)** - How to use the system
+- **[Architecture](docs/architecture.md)** - System design and components  
+- **[Database Schema](docs/database_schema.md)** - TypeORM entities and auto-sync
+- **[Testing Guide](docs/testing.md)** - Testing strategies
+- **[Project Proposal](docs/project_proposal.md)** - Original project overview
+- **[Progress Report](docs/progress_report.md)** - Implementation status
 
-## Requirements
+---
 
-- Docker and Docker Compose
-- 8GB+ RAM, 10GB+ disk space
+**Repository:** https://github.com/arnabk/theme-evolution-system

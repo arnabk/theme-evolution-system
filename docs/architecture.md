@@ -4,302 +4,362 @@ This document describes the architecture and design of the Theme Evolution Syste
 
 ## Overview
 
-The Theme Evolution System solves the critical challenge of **large-scale batch processing that exceeds LLM context windows**. It processes survey responses in intelligent chunks, maintains theme consistency across batches, and evolves themes over time using vector-based similarity matching and incremental processing.
+The Theme Evolution System processes survey responses in batches, maintains theme consistency across batches, and evolves themes over time using LLM-based analysis and semantic similarity.
 
-## High-Level Architecture
+## Technology Stack
+
+- **Runtime**: Bun (fast JavaScript runtime)
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript (100% type-safe)
+- **Database**: SQLite with TypeORM (auto-schema sync)
+- **LLM**: Ollama (local) with multi-provider support (OpenAI, Gemini)
+- **Frontend**: React 19 with Server Components
+- **Styling**: Tailwind CSS
+
+## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Theme Evolution System                    │
+│                    Next.js Application                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────┐ │
-│  │   Survey    │  │   Theme     │  │  Keyword    │  │  Theme  │ │
-│  │  Responses  │  │ Extractor   │  │ Highlighter │  │ Evolver │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────┘ │
-│         │                │                │              │      │
-│         ▼                ▼                ▼              ▼      │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │              Theme Processor (Orchestrator)                │ │
+│  │              React Frontend (page.tsx)                      │ │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐            │ │
+│  │  │  Question   │ │  Themes    │ │ Responses  │            │ │
+│  │  │  Display    │ │    Tab     │ │    Tab     │            │ │
+│  │  └────────────┘ └────────────┘ └────────────┘            │ │
 │  └─────────────────────────────────────────────────────────────┘ │
-│                              │                                 │
-│                              ▼                                 │
+│                           ↓ API calls                            │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │                    Data Layer                               │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │ │
-│  │  │ PostgreSQL  │  │   Ollama    │  │   Embedding Cache   │ │ │
-│  │  │ + pgvector  │  │ (Llama 3.1) │  │                     │ │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────────────┘ │ │
+│  │           Next.js API Routes (app/api/*)                    │ │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐        │ │
+│  │  │Question │ │Response │ │ Themes  │ │  Stats  │        │ │
+│  │  │  /gen   │ │  /gen   │ │/process │ │  /get   │        │ │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘        │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                           ↓                                      │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              Business Logic Layer (lib/)                    │ │
+│  │  ┌───────────────────────────────────────────────────────┐ │ │
+│  │  │    Theme Evolution (theme-evolution/)                 │ │ │
+│  │  │  • theme-extractor.ts  - Extract themes from text     │ │ │
+│  │  │  • theme-merger.ts     - Merge similar themes         │ │ │
+│  │  │  • response-assigner.ts - Assign responses to themes  │ │ │
+│  │  └───────────────────────────────────────────────────────┘ │ │
+│  │  ┌────────────────────┐  ┌────────────────────┐          │ │
+│  │  │    LLM Client      │  │  Database Client   │          │ │
+│  │  │  (llm.ts)          │  │  (database.ts)     │          │ │
+│  │  │  • Ollama          │  │  • TypeORM         │          │ │
+│  │  │  • OpenAI          │  │  • SQLite          │          │ │
+│  │  │  • Gemini          │  │  • Entities        │          │ │
+│  │  └────────────────────┘  └────────────────────┘          │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                           ↓                                      │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │                   Data Layer                                │ │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │ │
+│  │  │  SQLite    │  │  Ollama    │  │  TypeORM Entities  │  │ │
+│  │  │    DB      │  │  (Local)   │  │  • Theme           │  │ │
+│  │  │            │  │            │  │  • Response        │  │ │
+│  │  │            │  │            │  │  • Assignment      │  │ │
+│  │  │            │  │            │  │  • Session         │  │ │
+│  │  └────────────┘  └────────────┘  └────────────────────┘  │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Core Components
 
-### 1. Theme Processor (Orchestrator)
+### 1. Frontend Layer (React)
 
-**File**: `src/theme_processor.py`
+**Location**: `src/app/page.tsx`, `src/components/`
 
-The main orchestrator that coordinates all other components:
+Main application interface with three tabs:
+- **Dashboard**: Overview statistics and metrics
+- **Themes**: Theme list with assigned responses
+- **Responses**: All responses with theme assignments
 
-- **Responsibilities**:
-  - Manages the complete processing pipeline
-  - Coordinates between all components
-  - Handles batch processing workflow
-  - Manages error handling and logging
+**Key Files**:
+- `page.tsx` - Main application page (~165 lines)
+- `components/ThemesTab.tsx` - Theme orchestrator
+- `components/ResponsesTab.tsx` - Response listing
+- `components/themes/ThemesList.tsx` - Theme sidebar
+- `components/themes/ResponsesList.tsx` - Response panel with infinite scroll
 
-- **Key Methods**:
-  - `process_batch()`: Process a single batch of responses
-  - `process_multiple_batches()`: Process multiple batches
-  - `test_system_health()`: Health check for all components
+### 2. API Routes Layer
 
-### 2. Theme Extractor
+**Location**: `src/app/api/`
 
-**File**: `src/theme_extractor.py`
+RESTful API endpoints for all operations:
 
-Extracts themes from survey responses using Ollama/Llama:
+```
+/api/health              - Health check
+/api/questions/generate  - Generate random question
+/api/questions/current   - Get/set current question
+/api/questions/clear     - Clear all session data
+/api/responses/generate  - Generate synthetic responses
+/api/responses          - List all responses
+/api/themes             - List all themes
+/api/themes/process     - Process batch & extract themes
+/api/themes/[id]/responses - Get responses for theme
+/api/stats              - Get statistics
+```
 
-- **Responsibilities**:
-  - Generate themes from response batches
-  - Update theme descriptions based on new data
-  - Handle LLM communication and response parsing
+### 3. Business Logic Layer
 
-- **Key Methods**:
-  - `extract_themes_from_batch()`: Extract themes from responses
-  - `update_theme_description()`: Update existing theme descriptions
+**Location**: `src/lib/`
 
-### 3. Keyword Highlighter
+#### Theme Evolution Module (`theme-evolution/`)
 
-**File**: `src/keyword_highlighter.py`
+- **`theme-extractor.ts`** (~147 lines)
+  - Extracts themes from text using LLM
+  - Uses n-gram analysis for keyword extraction
+  - Returns themes with confidence scores
 
-Identifies keywords that contribute to theme assignment:
+- **`theme-merger.ts`** (~102 lines)
+  - Merges themes with >50% keyword overlap
+  - Combines descriptions intelligently
+  - Updates database atomically
 
-- **Responsibilities**:
-  - Extract n-grams (unigrams, bigrams, trigrams)
-  - Calculate keyword contribution scores
-  - Highlight relevant words/phrases
+- **`response-assigner.ts`** (~81 lines)
+  - Assigns responses to themes
+  - Calculates similarity scores
+  - Highlights contributing keywords
 
-- **Key Methods**:
-  - `highlight_keywords()`: Highlight keywords for a response-theme pair
-  - `extract_phrases()`: Extract n-grams from text
+#### LLM Client (`llm.ts`)
 
-### 4. Theme Evolver
+Multi-provider LLM client supporting:
+- **Ollama** (default, local, free)
+- **OpenAI** (cloud, API key required)
+- **Gemini** (cloud, API key required)
 
-**File**: `src/theme_evolver.py`
+Key methods:
+- `generate()` - Generate text with specified model
+- `generateQuestion()` - Generate survey questions
+- `generateResponse()` - Generate synthetic responses
 
-Handles theme evolution over time:
+#### Database Client (`database.ts`)
 
-- **Responsibilities**:
-  - Match responses to existing themes
-  - Detect theme merges and splits
-  - Update theme descriptions
-  - Apply retroactive updates
+TypeORM-based database operations:
+- Session management
+- Theme CRUD operations
+- Response storage
+- Assignment tracking
+- Statistics queries
 
-- **Key Methods**:
-  - `match_to_existing_themes()`: Match responses to themes
-  - `detect_theme_merges()`: Find themes to merge
-  - `detect_theme_splits()`: Find themes to split
-  - `update_theme_description()`: Update theme descriptions
+### 4. Data Layer
 
-### 5. Embedding Service
+#### TypeORM Entities (`lib/entities/`)
 
-**File**: `src/embedding_service.py`
+- **`Theme.ts`** - Theme entity with confidence scores
+- **`Response.ts`** - Survey response entity
+- **`ThemeAssignment.ts`** - Response-theme mapping with keywords
+- **`Session.ts`** - Session state management
 
-Manages embeddings and similarity calculations:
+#### SQLite Database
 
-- **Responsibilities**:
-  - Generate embeddings using Ollama
-  - Cache embeddings for efficiency
-  - Calculate cosine similarity
-  - Batch processing for performance
-
-- **Key Methods**:
-  - `get_embedding()`: Get embedding for text
-  - `get_embeddings_batch()`: Batch embedding generation
-  - `cosine_similarity()`: Calculate similarity between embeddings
-
-### 6. Database Manager
-
-**File**: `src/database.py`
-
-Handles all database operations:
-
-- **Responsibilities**:
-  - CRUD operations for all entities
-  - Vector similarity searches
-  - Transaction management
-  - Connection pooling
-
-- **Key Methods**:
-  - `save_response()`: Save survey response
-  - `save_theme()`: Save theme
-  - `find_similar_themes()`: Vector similarity search
-  - `save_theme_assignment()`: Save response-theme mapping
+- **Auto-sync schema** - TypeORM creates tables automatically
+- **File-based** - `theme-evolution.db` in project root
+- **No migrations** - Schema syncs on startup
+- **Lightweight** - Perfect for development and testing
 
 ## Data Flow
 
-### 1. Large-Scale Batch Processing Flow
+### 1. Question Generation Flow
 
 ```
-Large Dataset → Context-Aware Chunking → Batch Processing → Vector Similarity Matching → Theme Evolution → Retroactive Updates
+User clicks "Generate Question" 
+  → /api/questions/generate 
+  → LLMClient.generateQuestion() 
+  → Ollama API 
+  → Save to session 
+  → Return question
 ```
 
-**Key Innovation**: Breaks down datasets that exceed LLM context windows into manageable chunks while maintaining semantic coherence.
-
-### 2. Context Window Management
+### 2. Response Generation Flow
 
 ```
-Dataset Size > Context Limit → Intelligent Batching → LLM Processing → Vector Storage → Incremental Processing
+User clicks "Generate Responses" 
+  → /api/responses/generate 
+  → LLMClient.generateMultipleResponses() 
+  → Parallel batches of 5 
+  → Save to database 
+  → Return count
 ```
 
-**Technical Challenge**: Process millions of responses that cannot fit into single LLM calls while maintaining theme consistency.
-
-### 3. Theme Evolution Across Batches
+### 3. Theme Processing Flow
 
 ```
-Batch 1 → Theme Creation → Vector Storage → Batch 2 → Similarity Matching → Theme Updates → Retroactive Processing
+User clicks "Process Batch" 
+  → /api/themes/process 
+  → Load unprocessed responses 
+  → ThemeExtractor.extractThemes() 
+  → ThemeMerger.mergeThemes() 
+  → ResponseAssigner.assignResponses() 
+  → Save to database 
+  → Return results
 ```
 
-**State Management**: Maintain theme consistency across batches using vector embeddings and database persistence.
+### 4. Theme Evolution Across Batches
+
+```
+Batch 1 → Extract initial themes → Store in DB
+Batch 2 → Compare with existing themes → Merge similar ones → Update
+Batch 3 → Continue evolution → Maintain consistency
+```
 
 ## Database Schema
 
 ### Core Tables
 
-1. **survey_responses**: Stores survey responses with embeddings
-2. **extracted_themes**: Stores themes with embeddings and metadata
-3. **theme_assignments**: Maps responses to themes with confidence scores
-4. **theme_evolution_log**: Tracks theme changes over time
-5. **batch_metadata**: Stores processing metadata for each batch
-6. **embedding_cache**: Caches embeddings for performance
+1. **themes** - Extracted themes with embeddings
+2. **responses** - Survey responses
+3. **theme_assignments** - Response-theme mappings
+4. **sessions** - Session state
 
-### Vector Operations
-
-- Uses pgvector extension for efficient similarity search
-- IVFFlat indexes for fast vector queries
-- Cosine similarity for theme matching
+See [Database Schema](database_schema.md) for detailed schema.
 
 ## Configuration
 
-### Key Configuration Parameters
+### Environment Variables
 
-```yaml
-thresholds:
-  similarity_existing_theme: 0.75    # Match to existing theme
-  similarity_update_candidate: 0.50  # Consider for theme update
-  similarity_merge_themes: 0.85     # Merge themes threshold
-  theme_split_variance: 0.40        # Split theme threshold
-  keyword_contribution: 0.05        # Minimum keyword contribution
+```bash
+# LLM Provider (default: ollama)
+LLM_PROVIDER=ollama  # or openai, gemini
 
-processing:
-  batch_size: 100                   # Embedding batch size
-  max_keywords_per_response: 10     # Max keywords per response
-  theme_update_drift_threshold: 0.20 # Theme update threshold
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2:3b
+
+# OpenAI (optional)
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+
+# Gemini (optional)
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-1.5-flash
 ```
 
 ## Performance Considerations
 
-### 1. Embedding Caching
+### 1. Parallel Processing
 
-- All embeddings are cached in the database
-- SHA-256 hashing for cache keys
-- Significant cost savings for repeated text
+- Responses generated in parallel batches of 5
+- Non-blocking UI with individual button states
+- Streaming API responses (future)
 
-### 2. Batch Processing
+### 2. Database Optimization
 
-- Embeddings generated in batches of 100
-- Database operations batched for efficiency
-- Parallel processing where possible
+- SQLite with auto-sync schema
+- Indexed queries for fast lookups
+- Efficient TypeORM queries
 
-### 3. Vector Search Optimization
+### 3. LLM Optimization
 
-- IVFFlat indexes for fast similarity search
-- Connection pooling for database access
-- Efficient query patterns
+- Local Ollama for zero-cost processing
+- Configurable models per use case
+- Multi-provider support for flexibility
 
 ### 4. Memory Management
 
-- Streaming for large responses
-- Lazy loading of embeddings
-- Garbage collection optimization
+- Server-side rendering for initial load
+- Client-side state management with hooks
+- Efficient React re-rendering
 
 ## Scalability
 
-### Horizontal Scaling
+### Current Limitations
 
-- Stateless application design
-- Database connection pooling
-- Container orchestration ready
+- SQLite is file-based (single-writer)
+- No vector similarity search
+- No embedding caching
 
-### Vertical Scaling
+### Future Enhancements
 
-- Configurable batch sizes
-- Memory-efficient processing
-- Optimized algorithms
-
-### Data Volume Handling
-
-- Efficient vector operations
-- Incremental processing
-- Retroactive updates only when necessary
+- PostgreSQL + pgvector for production
+- Embedding cache for repeated text
+- Distributed processing
+- Real-time streaming
 
 ## Security Considerations
 
 ### 1. Data Privacy
 
-- Local processing with Ollama
-- No external API calls
-- Data stays within your infrastructure
+- Local processing with Ollama (default)
+- No external API calls required
+- Data stays on your machine
 
-### 2. Database Security
+### 2. API Security
 
-- Connection encryption
-- Access control
-- Audit logging
+- Session-based isolation
+- Server-side validation
+- Type-safe operations
 
-### 3. Container Security
+### 3. Environment Variables
 
-- Minimal base images
-- Non-root user execution
-- Resource limits
+- Sensitive keys in `.env` (not committed)
+- Optional cloud providers
+- Secure defaults
+
+## Development Workflow
+
+### 1. File Organization
+
+- **Modular design**: No file over 250 lines
+- **Separation of concerns**: API, business logic, data
+- **Type safety**: 100% TypeScript
+- **Component composition**: Reusable UI components
+
+### 2. Code Standards
+
+- TypeScript strict mode
+- ESLint for code quality
+- Tailwind for styling
+- React best practices
+
+### 3. Hot Reloading
+
+- Next.js Fast Refresh
+- Instant feedback
+- No manual restarts
 
 ## Monitoring and Observability
 
 ### 1. Logging
 
-- Structured logging with timestamps
-- Component-level logging
-- Error tracking and alerting
+- Console logging in development
+- Server-side error tracking
+- Client-side error boundaries
 
 ### 2. Metrics
 
-- Processing time per batch
-- Theme creation/update rates
-- Cache hit rates
-- Database performance
+- Response count
+- Theme count
+- Batch processing status
+- Assignment statistics
 
 ### 3. Health Checks
 
-- Component health monitoring
+- `/api/health` endpoint
 - Database connectivity
-- Ollama service status
-- Embedding service health
+- LLM service status
 
 ## Error Handling
 
 ### 1. Graceful Degradation
 
-- Continue processing on non-critical errors
-- Fallback mechanisms for failed components
-- Retry logic for transient failures
+- User-friendly error messages
+- Fallback UI states
+- Retry mechanisms
 
 ### 2. Error Recovery
 
-- Transaction rollback on failures
-- State consistency maintenance
-- Data integrity preservation
+- Transaction rollbacks
+- State consistency
+- Data integrity
 
 ### 3. Monitoring
 
 - Error rate tracking
-- Performance degradation detection
-- Alerting on critical failures
+- Performance metrics
+- User feedback

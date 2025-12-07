@@ -1,356 +1,384 @@
 # Testing Guide
 
-This guide explains how to test the Theme Evolution System, including unit tests, integration tests, and end-to-end testing.
+This guide explains how to test the Theme Evolution System built with Next.js and TypeScript.
 
-## Test Structure
+## Testing Strategy
+
+### Current Status
+
+The system is currently in development phase. Testing will be implemented using modern TypeScript testing tools.
+
+### Recommended Testing Stack
+
+- **Bun Test** - Fast, built-in test runner
+- **React Testing Library** - Component testing
+- **MSW** (Mock Service Worker) - API mocking
+- **TypeScript** - Type-safe tests
+
+## Test Structure (Planned)
 
 ```
 tests/
-├── __init__.py
-├── test_models.py              # Pydantic model tests
-├── test_embedding_service.py   # Embedding service tests
-├── test_integration.py         # End-to-end integration tests
-└── test_*.py                   # Additional component tests
+├── unit/
+│   ├── theme-extractor.test.ts     # Theme extraction logic
+│   ├── theme-merger.test.ts        # Theme merging logic
+│   ├── response-assigner.test.ts   # Response assignment
+│   └── llm-client.test.ts          # LLM client
+├── integration/
+│   ├── api-routes.test.ts          # API endpoint testing
+│   ├── database.test.ts            # Database operations
+│   └── theme-evolution.test.ts     # End-to-end theme processing
+├── components/
+│   ├── ThemesTab.test.tsx          # Theme tab component
+│   ├── ResponsesTab.test.tsx       # Responses tab component
+│   └── StatsCard.test.tsx          # Stats card component
+└── e2e/
+    └── user-workflow.test.ts       # Complete user flows
+```
+
+## Setting Up Tests
+
+### Install Testing Dependencies
+
+```bash
+# Bun includes built-in test runner
+# No additional dependencies needed for basic tests
+
+# For component testing (optional)
+bun add -d @testing-library/react @testing-library/jest-dom
+bun add -d @testing-library/user-event
+
+# For API mocking (optional)
+bun add -d msw
 ```
 
 ## Running Tests
 
-### Prerequisites
-
-```bash
-# Install test dependencies
-pip install -r requirements.txt
-
-# Ensure test database is available
-docker-compose up -d postgres
-```
-
-### Basic Test Execution
+### Using Bun Test
 
 ```bash
 # Run all tests
-pytest
-
-# Run with verbose output
-pytest -v
+bun test
 
 # Run specific test file
-pytest tests/test_models.py
+bun test tests/unit/theme-extractor.test.ts
 
-# Run specific test
-pytest tests/test_models.py::TestSurveyResponse::test_create_survey_response
-```
+# Run tests in watch mode
+bun test --watch
 
-### Test Coverage
-
-```bash
 # Run with coverage
-pytest --cov=src tests/
-
-# Generate coverage report
-pytest --cov=src --cov-report=html tests/
-open htmlcov/index.html
+bun test --coverage
 ```
 
-### Test Configuration
-
-The `pytest.ini` file configures test execution:
-
-```ini
-[tool:pytest]
-testpaths = tests
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
-addopts = 
-    -v
-    --tb=short
-    --strict-markers
-    --disable-warnings
-markers =
-    integration: marks tests as integration tests
-    unit: marks tests as unit tests
-    slow: marks tests as slow running
-```
-
-## Test Categories
+## Test Examples
 
 ### 1. Unit Tests
 
-Test individual components in isolation.
+#### Theme Extractor Test
 
-#### Model Tests (`test_models.py`)
+```typescript
+// tests/unit/theme-extractor.test.ts
+import { describe, expect, test, mock } from 'bun:test';
+import { extractThemes } from '@/lib/theme-evolution/theme-extractor';
 
-```python
-def test_create_survey_response():
-    """Test creating a survey response."""
-    response = SurveyResponse(
-        batch_id=1,
-        question="What are your challenges?",
-        response_text="API integration issues"
-    )
-    
-    assert response.batch_id == 1
-    assert response.question == "What are your challenges?"
-    assert response.response_text == "API integration issues"
+describe('Theme Extractor', () => {
+  test('should extract themes from responses', async () => {
+    const responses = [
+      'Remote work is challenging due to isolation',
+      'Working from home lacks collaboration',
+      'Virtual meetings are exhausting'
+    ];
+
+    const themes = await extractThemes(responses, 'mock-session');
+
+    expect(themes.length).toBeGreaterThan(0);
+    expect(themes[0]).toHaveProperty('name');
+    expect(themes[0]).toHaveProperty('description');
+    expect(themes[0]).toHaveProperty('confidence');
+  });
+
+  test('should handle empty responses', async () => {
+    const themes = await extractThemes([], 'mock-session');
+    expect(themes).toEqual([]);
+  });
+});
 ```
 
-#### Embedding Service Tests (`test_embedding_service.py`)
+#### Theme Merger Test
 
-```python
-def test_get_embedding_success():
-    """Test successful embedding generation."""
-    # Mock Ollama response
-    mock_response = {'embedding': [0.1, 0.2, 0.3]}
-    mock_ollama_client.return_value.embeddings.return_value = mock_response
-    
-    result = embedding_service.get_embedding("test text")
-    assert result == [0.1, 0.2, 0.3]
+```typescript
+// tests/unit/theme-merger.test.ts
+import { describe, expect, test } from 'bun:test';
+import { mergeThemes } from '@/lib/theme-evolution/theme-merger';
+
+describe('Theme Merger', () => {
+  test('should merge similar themes', () => {
+    const theme1 = {
+      id: 1,
+      name: 'Remote Work Challenges',
+      keywords: ['remote', 'work', 'home', 'isolation']
+    };
+
+    const theme2 = {
+      id: 2,
+      name: 'Working from Home Issues',
+      keywords: ['home', 'work', 'remote', 'communication']
+    };
+
+    const overlap = calculateOverlap(theme1.keywords, theme2.keywords);
+    expect(overlap).toBeGreaterThan(0.5);
+  });
+
+  test('should not merge different themes', () => {
+    const theme1 = {
+      keywords: ['remote', 'work', 'home']
+    };
+
+    const theme2 = {
+      keywords: ['productivity', 'tools', 'efficiency']
+    };
+
+    const overlap = calculateOverlap(theme1.keywords, theme2.keywords);
+    expect(overlap).toBeLessThan(0.3);
+  });
+});
 ```
 
-### 2. Integration Tests
+### 2. API Route Tests
 
-Test component interactions.
+```typescript
+// tests/integration/api-routes.test.ts
+import { describe, expect, test } from 'bun:test';
 
-#### End-to-End Tests (`test_integration.py`)
-
-```python
-def test_theme_processor_initialization():
-    """Test theme processor initialization."""
-    processor = ThemeProcessor(mock_config)
+describe('API Routes', () => {
+  test('GET /api/health returns ok', async () => {
+    const response = await fetch('http://localhost:3000/api/health');
+    const data = await response.json();
     
-    # Verify all components were initialized
-    assert processor.db_manager is not None
-    assert processor.embedding_service is not None
-    assert processor.theme_extractor is not None
+    expect(response.status).toBe(200);
+    expect(data.status).toBe('ok');
+  });
+
+  test('POST /api/questions/generate creates question', async () => {
+    const response = await fetch('http://localhost:3000/api/questions/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: 'test-session' })
+    });
+
+    const data = await response.json();
+    
+    expect(response.status).toBe(200);
+    expect(data).toHaveProperty('question');
+    expect(data.question).toBeTruthy();
+  });
+});
 ```
 
-### 3. Performance Tests
+### 3. Component Tests
 
-Test system performance and scalability.
+```typescript
+// tests/components/StatsCard.test.tsx
+import { describe, expect, test } from 'bun:test';
+import { render, screen } from '@testing-library/react';
+import StatsCard from '@/components/StatsCard';
 
-```python
-@pytest.mark.slow
-def test_large_batch_processing():
-    """Test processing large batches."""
-    # Create large batch
-    large_batch = create_large_batch(1000)  # 1000 responses
+describe('StatsCard Component', () => {
+  test('renders title and value', () => {
+    render(<StatsCard title="Total Responses" value={42} />);
     
-    start_time = time.time()
-    result = processor.process_batch(large_batch)
-    processing_time = time.time() - start_time
+    expect(screen.getByText('Total Responses')).toBeInTheDocument();
+    expect(screen.getByText('42')).toBeInTheDocument();
+  });
+
+  test('applies gradient styling', () => {
+    const { container } = render(
+      <StatsCard title="Test" value={10} gradient="from-blue-400 to-blue-600" />
+    );
     
-    assert processing_time < 60  # Should complete within 60 seconds
-    assert result.themes_created > 0
+    const card = container.firstChild;
+    expect(card).toHaveClass('from-blue-400');
+  });
+});
 ```
 
-## Test Data
+### 4. Database Tests
 
-### Synthetic Test Data
+```typescript
+// tests/integration/database.test.ts
+import { describe, expect, test, beforeAll, afterAll } from 'bun:test';
+import { getDataSource } from '@/lib/data-source';
+import { Theme } from '@/lib/entities/Theme';
 
-The system includes synthetic data generation for testing:
+describe('Database Operations', () => {
+  beforeAll(async () => {
+    const dataSource = await getDataSource();
+    // Use test database
+  });
 
-```python
-# Generate test data through Streamlit UI
-# Access http://localhost:8501 and use the UI to generate test data
+  afterAll(async () => {
+    // Clean up test data
+  });
 
-# Load test data
-from src.utils import load_batch_data
-test_batches = load_batch_data("data/test_batches.json")
+  test('should save and retrieve theme', async () => {
+    const dataSource = await getDataSource();
+    const themeRepo = dataSource.getRepository(Theme);
+
+    const theme = themeRepo.create({
+      session_id: 'test-session',
+      name: 'Test Theme',
+      description: 'Test description',
+      confidence: 0.85,
+      is_active: true
+    });
+
+    const saved = await themeRepo.save(theme);
+    expect(saved.id).toBeTruthy();
+
+    const retrieved = await themeRepo.findOne({ where: { id: saved.id } });
+    expect(retrieved?.name).toBe('Test Theme');
+  });
+});
 ```
 
-### Test Fixtures
+## Manual Testing
 
-```python
-@pytest.fixture
-def sample_batch_data():
-    """Sample batch data for testing."""
-    return BatchData(
-        batch_id=1,
-        question="What are your biggest challenges?",
-        responses=[
-            "API integration issues",
-            "Lack of documentation",
-            "Version compatibility problems"
-        ]
-    )
+### Testing Through UI
 
-@pytest.fixture
-def mock_config():
-    """Mock configuration for testing."""
-    return {
-        'database': {
-            'host': 'localhost',
-            'port': 5432,
-            'database': 'test_db',
-            'user': 'test_user',
-            'password': 'test_password'
-        },
-        'ollama': {
-            'base_url': 'http://localhost:11434',
-            'generation_model': 'llama3.1',
-            'embedding_model': 'nomic-embed-text'
-        }
+1. **Start the application**
+   ```bash
+   bun dev
+   ```
+
+2. **Test question generation**
+   - Click "Generate Random Question"
+   - Verify a question appears
+   - Check it's relevant and well-formed
+
+3. **Test response generation**
+   - Click "Generate 100 Responses"
+   - Verify responses are created
+   - Check response count increases
+
+4. **Test theme processing**
+   - Click "Process Themes"
+   - Verify themes are extracted
+   - Check themes make semantic sense
+   - Verify responses are assigned to themes
+
+5. **Test theme viewing**
+   - Navigate to "Themes" tab
+   - Click on different themes
+   - Verify responses are displayed correctly
+   - Check keyword highlighting works
+
+6. **Test responses viewing**
+   - Navigate to "Responses" tab
+   - Verify all responses are listed
+   - Check pagination works
+   - Verify theme assignments are shown
+
+### API Testing with curl
+
+```bash
+# Health check
+curl http://localhost:3000/api/health
+
+# Generate question
+curl -X POST http://localhost:3000/api/questions/generate \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId":"test"}'
+
+# Get current question
+curl http://localhost:3000/api/questions/current?sessionId=test
+
+# Get statistics
+curl http://localhost:3000/api/stats?sessionId=test
+
+# List themes
+curl http://localhost:3000/api/themes?sessionId=test
+```
+
+## Performance Testing
+
+### Load Testing
+
+Test system performance with large datasets:
+
+```typescript
+// tests/performance/load.test.ts
+import { describe, test } from 'bun:test';
+
+describe('Performance Tests', () => {
+  test('should handle 1000 responses', async () => {
+    const startTime = Date.now();
+    
+    // Generate 1000 responses
+    for (let i = 0; i < 10; i++) {
+      await fetch('http://localhost:3000/api/responses/generate', {
+        method: 'POST',
+        body: JSON.stringify({ count: 100, sessionId: 'perf-test' })
+      });
     }
+    
+    const duration = Date.now() - startTime;
+    console.log(`Generated 1000 responses in ${duration}ms`);
+    
+    // Should complete in reasonable time
+    expect(duration).toBeLessThan(60000); // 1 minute
+  });
+
+  test('should process themes efficiently', async () => {
+    const startTime = Date.now();
+    
+    await fetch('http://localhost:3000/api/themes/process', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId: 'perf-test' })
+    });
+    
+    const duration = Date.now() - startTime;
+    console.log(`Processed themes in ${duration}ms`);
+    
+    expect(duration).toBeLessThan(30000); // 30 seconds
+  });
+});
 ```
 
-## Mocking and Stubbing
+### Benchmarking
 
-### Ollama Mocking
+```typescript
+// Benchmark theme extraction
+import { bench, run } from 'bun:test';
 
-```python
-@patch('src.theme_extractor.ollama.Client')
-def test_theme_extraction(mock_ollama_client):
-    """Test theme extraction with mocked Ollama."""
-    # Mock Ollama response
-    mock_response = {
-        'response': '[{"name": "API Challenges", "description": "API-related issues"}]'
-    }
-    mock_ollama_client.return_value.generate.return_value = mock_response
-    
-    # Test theme extraction
-    themes = extractor.extract_themes_from_batch(question, responses, batch_id)
-    assert len(themes) == 1
-    assert themes[0].name == "API Challenges"
+bench('extract themes from 100 responses', async () => {
+  await extractThemes(responses, 'bench-session');
+});
+
+bench('merge similar themes', () => {
+  mergeThemes(themes, 'bench-session');
+});
+
+await run();
 ```
 
-### Database Mocking
+## Test Coverage
 
-```python
-@patch('src.database.psycopg2.connect')
-def test_database_operations(mock_connect):
-    """Test database operations with mocked connection."""
-    # Mock database connection
-    mock_conn = Mock()
-    mock_cursor = Mock()
-    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-    mock_connect.return_value.__enter__.return_value = mock_conn
-    
-    # Test database operations
-    db_manager = DatabaseManager(config)
-    assert db_manager.test_connection() is True
+### Measuring Coverage
+
+```bash
+# Run tests with coverage
+bun test --coverage
+
+# View coverage report
+# Coverage results will be displayed in terminal
 ```
 
-## Test Environment Setup
+### Coverage Goals
 
-### Docker Test Environment
-
-```yaml
-# docker-compose.test.yml
-version: '3.8'
-services:
-  postgres-test:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_DB: test_theme_evolution
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-    ports:
-      - "5433:5432"
-    volumes:
-      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-```
-
-### Test Database Setup
-
-```python
-@pytest.fixture(scope="session")
-def test_database():
-    """Set up test database."""
-    # Start test database
-    subprocess.run(["docker-compose", "-f", "docker-compose.test.yml", "up", "-d"])
-    
-    # Wait for database to be ready
-    time.sleep(5)
-    
-    yield
-    
-    # Cleanup
-    subprocess.run(["docker-compose", "-f", "docker-compose.test.yml", "down", "-v"])
-```
-
-## Test Scenarios
-
-### 1. Basic Functionality Tests
-
-```python
-def test_survey_response_creation():
-    """Test creating survey responses."""
-    response = SurveyResponse(
-        batch_id=1,
-        question="Test question",
-        response_text="Test response"
-    )
-    assert response.batch_id == 1
-
-def test_theme_creation():
-    """Test creating themes."""
-    theme = Theme(
-        name="Test Theme",
-        description="Test description",
-        created_at_batch=1
-    )
-    assert theme.name == "Test Theme"
-```
-
-### 2. Integration Tests
-
-```python
-def test_theme_extraction_workflow():
-    """Test complete theme extraction workflow."""
-    # Create test batch
-    batch = BatchData(
-        batch_id=1,
-        question="What are your challenges?",
-        responses=["API issues", "Documentation problems"]
-    )
-    
-    # Process batch
-    result = processor.process_batch(batch)
-    
-    # Verify results
-    assert result.batch_id == 1
-    assert result.themes_created > 0
-    assert result.processing_time_seconds > 0
-```
-
-### 3. Error Handling Tests
-
-```python
-def test_invalid_embedding_handling():
-    """Test handling of invalid embeddings."""
-    # Test with empty text
-    embedding = embedding_service.get_embedding("")
-    assert embedding == [0.0] * 768
-    
-    # Test with None
-    embedding = embedding_service.get_embedding(None)
-    assert embedding == [0.0] * 768
-
-def test_database_connection_failure():
-    """Test handling of database connection failures."""
-    with patch('src.database.psycopg2.connect', side_effect=Exception("Connection failed")):
-        db_manager = DatabaseManager(config)
-        assert db_manager.test_connection() is False
-```
-
-### 4. Performance Tests
-
-```python
-@pytest.mark.slow
-def test_batch_processing_performance():
-    """Test batch processing performance."""
-    # Create large batch
-    large_batch = create_large_batch(100)
-    
-    start_time = time.time()
-    result = processor.process_batch(large_batch)
-    processing_time = time.time() - start_time
-    
-    # Performance assertions
-    assert processing_time < 30  # Should complete within 30 seconds
-    assert result.processing_time_seconds < 30
-```
+- **Unit Tests**: 80%+ coverage for business logic
+- **Integration Tests**: Key workflows covered
+- **Component Tests**: Major UI components tested
+- **API Routes**: All endpoints tested
 
 ## Continuous Integration
 
@@ -366,170 +394,120 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_theme_evolution
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        pip install -r requirements.txt
-    
-    - name: Run tests
-      run: |
-        pytest --cov=src tests/
-    
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
+      - uses: actions/checkout@v3
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: bun install
+      
+      - name: Run tests
+        run: bun test
+      
+      - name: Build
+        run: bun run build
 ```
 
-## Test Best Practices
+## Test Data
+
+### Synthetic Test Data
+
+Use the UI to generate test data:
+
+```typescript
+// Generate test data programmatically
+async function generateTestData(sessionId: string) {
+  // Generate question
+  await fetch('/api/questions/generate', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId })
+  });
+
+  // Generate responses
+  await fetch('/api/responses/generate', {
+    method: 'POST',
+    body: JSON.stringify({ count: 100, sessionId })
+  });
+
+  // Process themes
+  await fetch('/api/themes/process', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId })
+  });
+}
+```
+
+## Best Practices
 
 ### 1. Test Isolation
 
-```python
-def test_theme_processing():
-    """Test theme processing in isolation."""
-    # Use fresh instances for each test
-    processor = ThemeProcessor(config)
-    batch = create_test_batch()
-    
-    result = processor.process_batch(batch)
-    assert result is not None
-```
+- Each test should be independent
+- Clean up test data after tests
+- Use unique session IDs for tests
+- Mock external dependencies
 
-### 2. Test Data Management
+### 2. Test Organization
 
-```python
-@pytest.fixture(autouse=True)
-def clean_database():
-    """Clean database before each test."""
-    # Clean up test data
-    db_manager.clear_test_data()
-    yield
-    # Clean up after test
-    db_manager.clear_test_data()
-```
+- Group related tests with `describe`
+- Use descriptive test names
+- Follow AAA pattern (Arrange, Act, Assert)
+- Keep tests focused and simple
 
-### 3. Assertion Clarity
+### 3. Mocking
 
-```python
-def test_theme_creation():
-    """Test theme creation with clear assertions."""
-    theme = create_test_theme()
-    
-    # Clear, specific assertions
-    assert theme.name == "Test Theme"
-    assert theme.description is not None
-    assert theme.created_at_batch == 1
-    assert theme.status == "active"
-```
+- Mock LLM calls for unit tests
+- Use MSW for API mocking
+- Create test fixtures for complex data
+- Avoid over-mocking
 
-### 4. Error Testing
+### 4. Assertions
 
-```python
-def test_invalid_input_handling():
-    """Test handling of invalid inputs."""
-    with pytest.raises(ValueError, match="Invalid confidence score"):
-        ThemeAssignment(
-            response_id=1,
-            theme_id=1,
-            confidence_score=1.5,  # Invalid score > 1
-            highlighted_keywords=[],
-            assigned_at_batch=1
-        )
-```
+- Be specific in assertions
+- Test both success and failure cases
+- Verify error messages
+- Check edge cases
 
 ## Debugging Tests
 
-### Verbose Output
+### Debug Output
+
+```typescript
+test('debug example', () => {
+  const result = someFunction();
+  console.log('Result:', result); // Bun will show this
+  expect(result).toBe(expected);
+});
+```
+
+### Breakpoints
 
 ```bash
-# Run with verbose output
-pytest -v -s
+# Run tests with debugger
+bun test --inspect
 
-# Run specific test with debug output
-pytest -v -s tests/test_models.py::TestSurveyResponse::test_create_survey_response
+# Then connect Chrome DevTools or VS Code debugger
 ```
 
-### Test Debugging
+## Future Testing Enhancements
 
-```python
-def test_debug_example():
-    """Example of debugging test failures."""
-    result = processor.process_batch(batch)
-    
-    # Debug output
-    print(f"Result: {result}")
-    print(f"Themes created: {result.themes_created}")
-    
-    # Assert with helpful message
-    assert result.themes_created > 0, f"No themes created. Result: {result}"
-```
+### Planned Improvements
 
-### Test Logging
+1. **E2E Testing** - Playwright for full user workflows
+2. **Visual Regression** - Screenshot comparison testing
+3. **Performance Monitoring** - Continuous performance tracking
+4. **Test Database** - Separate test database setup
+5. **Automated Testing** - CI/CD integration
+6. **Load Testing** - Scalability testing with tools like k6
 
-```python
-import logging
+## Next Steps
 
-def test_with_logging():
-    """Test with logging enabled."""
-    logging.basicConfig(level=logging.DEBUG)
-    
-    result = processor.process_batch(batch)
-    assert result is not None
-```
-
-## Coverage Goals
-
-### Target Coverage
-
-- **Unit Tests**: 90%+ coverage for core modules
-- **Integration Tests**: 80%+ coverage for workflows
-- **Error Handling**: 100% coverage for error paths
-
-### Coverage Reports
-
-```bash
-# Generate coverage report
-pytest --cov=src --cov-report=html --cov-report=term tests/
-
-# View HTML report
-open htmlcov/index.html
-```
-
-### Coverage Configuration
-
-```ini
-# .coveragerc
-[run]
-source = src
-omit = 
-    */tests/*
-    */venv/*
-    */env/*
-
-[report]
-exclude_lines =
-    pragma: no cover
-    def __repr__
-    raise AssertionError
-    raise NotImplementedError
-```
+1. Set up test infrastructure with Bun test
+2. Write unit tests for core business logic
+3. Add integration tests for API routes
+4. Implement component tests for UI
+5. Set up CI/CD for automated testing
+6. Measure and improve test coverage

@@ -1,54 +1,93 @@
-# Python
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+.yarn/
+
+# Package Manager Locks (keep bun.lockb for reproducibility)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment Variables
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# SQLite Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+theme-evolution.db
+
+# Testing
+.coverage
+*.lcov
+.nyc_output
+junit.xml
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+.cache/
+
+# Project Specific
+data/
+outputs/
+config/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Python (legacy - keeping in case of scripts)
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
 venv/
 env/
 ENV/
+.pytest_cache/
 
-# Environment variables
-.env
-.env.local
-.env.*.local
+# Docker (keeping for reference)
+.docker/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Data files and volumes
-data/
-outputs/
-logs/
-*.log
-
-# Database
-*.db
-*.sqlite
-
-# Docker
-.dockerignore
-
-# OS
-.DS_Store
-Thumbs.db
+,next/

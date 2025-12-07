@@ -1,212 +1,489 @@
 # Usage Guide
 
-This guide explains how to use the Theme Evolution System through the modern Streamlit web interface.
+This guide explains how to use the Theme Evolution System through the modern Next.js web interface.
 
 ## Quick Start
 
-1. **Start the system**
-2. **Access the Streamlit UI**
-3. **Generate and process data**
-4. **View interactive results**
+1. **Start the application**
+   ```bash
+   bun dev
+   ```
 
-```bash
-docker-compose up
-# Open http://localhost:8501 in your browser
-```
+2. **Open your browser**
+   ```
+   http://localhost:3000
+   ```
 
-## Streamlit UI Overview
+3. **Start using the system**
+   - Generate a question
+   - Generate responses
+   - Process themes
+   - View results
 
-The Streamlit interface provides a modern, interactive way to use the Theme Evolution System:
+## Interface Overview
 
-### 🎛️ Control Panel (Sidebar)
-- **🎯 Generate Random Question**: Creates a random survey question
-- **📝 Generate 100 Responses**: Creates synthetic responses for the current question
-- **⚡ Process New Batch**: Processes the latest batch with theme extraction
-- **🗑️ Clear All Data**: Resets all data and starts fresh
+The application has a modern, gradient-styled interface with:
 
-### 📊 Main Dashboard
-- **Real-time metrics**: Total responses, themes found, batches processed
-- **Interactive tabs**: Dashboard, Themes, Responses, Analysis
-- **Visual analytics**: Charts, graphs, and data tables
+### Left Sidebar (Control Panel)
 
-## Step-by-Step Usage
+**System Actions:**
+- 🎯 **Generate Random Question** - Creates a new survey question
+- 📝 **Generate 100 Responses** - Creates 100 synthetic responses
+- ⚡ **Process Themes** - Extracts themes from unprocessed responses
+- 🗑️ **Clear All Data** - Resets the session (fresh start)
 
-### 1. Generate a Survey Question
+**Statistics Dashboard:**
+- Total Responses count
+- Active Themes count
+- Batches Processed count
 
-Click the **🎯 Generate Random Question** button in the sidebar to create a random survey question. Examples:
-- "What are your biggest challenges with remote work?"
-- "How do you stay motivated during difficult projects?"
-- "What tools do you find most helpful for productivity?"
+### Main Content Area (Tabs)
 
-### 2. Generate Synthetic Responses
+**Two main tabs:**
+1. **Themes** - View themes with assigned responses
+2. **Responses** - View all responses with assignments
 
-Click the **📝 Generate 100 Responses** button to create 100 synthetic responses for the current question. The system will:
-- Generate diverse, realistic responses
-- Simulate different perspectives and experiences
-- Create responses of varying lengths and complexity
+## Step-by-Step Workflow
 
-### 3. Process the Batch
+### 1. Generate a Question
 
-Click the **⚡ Process New Batch** button to:
-- Extract themes from the responses
-- Highlight contributing keywords
-- Assign responses to themes
-- Update existing themes if applicable
+**Action**: Click **"Generate Random Question"** button
 
-### 4. Explore Results
+**What happens:**
+- System uses LLM to generate a random survey question
+- Question appears in the main panel
+- Examples: 
+  - "What are your biggest challenges with remote work?"
+  - "How do you maintain work-life balance?"
+  - "What tools improve your productivity?"
 
-Navigate through the different tabs to explore your results:
+**Status**: Button shows loading spinner while generating
 
-#### 📊 Dashboard Tab
-- **Theme Distribution**: Pie chart showing response distribution by theme
-- **Theme Confidence**: Bar chart showing confidence scores
-- **Recent Themes**: List of the latest themes with details
+### 2. Generate Responses
 
-#### 🎯 Themes Tab
-- **Theme Selection**: Dropdown to select specific themes
-- **Theme Details**: Name, description, confidence, keywords
-- **Assigned Responses**: Responses assigned to the selected theme
-- **Keyword Analysis**: Highlighted keywords with importance scores
+**Action**: Click **"Generate 100 Responses"** button
 
-#### 📝 Responses Tab
-- **Response Statistics**: Average length, total count, assignment rate
-- **Length Distribution**: Histogram of response lengths
-- **Recent Responses**: List of the latest responses with details
+**Requirements**: Must have a current question
 
-#### 🔍 Analysis Tab
-- **Theme Evolution**: Line chart showing theme confidence over time
-- **Keyword Analysis**: Bar chart of top keywords across all themes
-- **Similarity Analysis**: Histogram of similarity scores
+**What happens:**
+- System generates 100 diverse, synthetic responses
+- Uses different personas and perspectives
+- Responses saved to database
+- Response count updates in stats
+
+**Time**: Takes ~20-30 seconds (depends on LLM speed)
+
+**Status**: Button shows loading spinner and disables during generation
+
+### 3. Process Themes
+
+**Action**: Click **"Process Themes"** button
+
+**Requirements**: Must have unprocessed responses
+
+**What happens:**
+1. Loads all unprocessed responses
+2. Extracts themes using n-gram analysis and LLM
+3. Merges similar themes (>50% keyword overlap)
+4. Assigns responses to themes
+5. Highlights contributing keywords
+6. Updates database
+
+**Time**: Takes ~10-20 seconds (depends on response count)
+
+**Output:**
+- Themes extracted and displayed
+- Response-theme assignments created
+- Keywords highlighted in responses
+
+### 4. View Themes
+
+**Navigate to**: **Themes** tab (default view)
+
+**Interface:**
+- **Left panel**: List of all themes
+  - Theme name
+  - Confidence score
+  - Response count
+  - Truncated description
+  
+- **Right panel**: Selected theme details
+  - Full description
+  - All assigned responses
+  - Highlighted keywords in each response
+  - Confidence scores per assignment
+
+**Interactions:**
+- Click any theme in left panel to view details
+- Scroll through responses (infinite scroll)
+- Hover over keywords to see highlighting
+
+### 5. View Responses
+
+**Navigate to**: **Responses** tab
+
+**Interface:**
+- **Statistics bar**:
+  - Total responses
+  - Average response length
+  - Assignment rate
+  
+- **Response list**:
+  - All responses in order
+  - Batch ID for each
+  - Assigned themes (if processed)
+  - Response text
+
+**Features:**
+- Paginated view (25 responses per page)
+- Next/Previous pagination buttons
+- Theme badges show assignments
 
 ## Advanced Features
 
-### Batch Processing Workflow
+### Session Management
 
-1. **Generate Question**: Start with a new survey question
-2. **Generate Responses**: Create 100 synthetic responses
-3. **Process Batch**: Extract themes and keywords
-4. **Repeat**: Generate more responses for the same question
-5. **Theme Evolution**: Watch themes evolve as new data arrives
+**What is a session?**
+- Unique identifier for your work
+- Stored in browser localStorage
+- All data tied to session ID
+- Persists across page refreshes
 
-### Real-time Monitoring
+**Session isolation:**
+- Each browser gets unique session
+- Data doesn't mix between sessions
+- Clear data only affects your session
 
-The dashboard provides real-time updates:
-- **Processing Status**: Live updates during batch processing
-- **Progress Indicators**: Visual feedback for long operations
-- **Error Handling**: Clear error messages and recovery options
+### Multiple Batches
 
-### Data Management
+**Process multiple times:**
+1. Generate question (once)
+2. Generate responses (batch 1)
+3. Process themes → Themes created
+4. Generate more responses (batch 2)
+5. Process themes → Themes evolve!
 
-- **Session State**: All data persists during your session
-- **Clear Data**: Reset everything to start fresh
-- **Export Options**: Download results as JSON or CSV
+**Theme evolution:**
+- Batch 1: Initial themes extracted
+- Batch 2: New responses added, similar themes merged
+- Batch 3+: Themes continue to evolve
+
+### Theme Merging
+
+**Automatic merging:**
+- System detects similar themes
+- Merges if >50% keyword overlap
+- Combines descriptions intelligently
+- Updates all assignments
+
+**Example:**
+```
+Theme 1: "Remote Work Challenges" (keywords: remote, work, home, isolation)
+Theme 2: "Working from Home Issues" (keywords: home, work, remote, communication)
+→ Merged: "Remote Work Challenges" (combined description)
+```
+
+### Keyword Highlighting
+
+**How it works:**
+- Extracts n-grams (1-3 word phrases)
+- Calculates similarity to theme
+- Highlights top contributing keywords
+- Shows keyword positions in text
+
+**Visual display:**
+- Bold text for highlighted keywords
+- Inline with response text
+- Shows which words contributed to assignment
 
 ## UI Features
 
 ### Modern Design
-- **Gradient Headers**: Beautiful gradient text effects
-- **Card Layouts**: Clean, organized information display
-- **Interactive Charts**: Plotly-powered visualizations
-- **Responsive Design**: Works on desktop and mobile
 
-### User Experience
-- **One-Click Operations**: Simple button-based workflow
-- **Visual Feedback**: Progress bars, success messages, warnings
-- **Intuitive Navigation**: Clear tab structure and organization
-- **No Logs Needed**: All information displayed in the UI
+**Visual elements:**
+- Gradient backgrounds
+- Glass-morphism cards
+- Animated particles
+- Smooth transitions
+- Loading spinners
 
-### Performance
-- **Real-time Updates**: Live data refresh
-- **Efficient Processing**: Optimized batch operations
-- **Memory Management**: Smart data handling
-- **Error Recovery**: Graceful error handling
+**Color scheme:**
+- Dark theme (gray-950 base)
+- Blue/cyan accents
+- White/gray text
+- Subtle borders
+
+### Responsive Buttons
+
+**Smart button states:**
+- Each button has independent state
+- Loading spinner when active
+- Disabled during operation
+- Tooltips show requirements
+
+**Examples:**
+- "Generate Responses" disabled until question exists
+- "Process Themes" disabled until responses exist
+- Clear warnings before destructive actions
+
+### Real-time Updates
+
+**Automatic refresh:**
+- Stats update after each operation
+- Theme list refreshes on processing
+- Response counts update live
+- No manual refresh needed
+
+## Common Workflows
+
+### Experiment with Questions
+
+```
+1. Generate Question
+2. Generate Responses (100)
+3. Process Themes
+4. Review results
+5. Clear All Data
+6. Repeat with different question
+```
+
+### Iterative Theme Development
+
+```
+1. Generate Question (once)
+2. Generate Responses (100)
+3. Process Themes
+4. Review themes
+5. Generate MORE Responses (100)
+6. Process Themes again
+7. Watch themes evolve!
+```
+
+### Analyze Patterns
+
+```
+1. Process multiple batches
+2. View Themes tab
+3. Compare theme confidence scores
+4. Check response counts per theme
+5. Review keyword highlights
+6. Identify patterns
+```
+
+## API Access
+
+For programmatic access, use the REST API:
+
+### Available Endpoints
+
+```bash
+# Health check
+GET /api/health
+
+# Questions
+POST /api/questions/generate
+GET /api/questions/current?sessionId={id}
+POST /api/questions/clear
+
+# Responses
+POST /api/responses/generate
+GET /api/responses?sessionId={id}
+
+# Themes
+GET /api/themes?sessionId={id}
+POST /api/themes/process
+GET /api/themes/{themeId}/responses
+
+# Statistics
+GET /api/stats?sessionId={id}
+```
+
+### Example Usage
+
+```typescript
+// Generate question
+const response = await fetch('/api/questions/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ sessionId })
+});
+const { question } = await response.json();
+
+// Generate responses
+const response = await fetch('/api/responses/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ count: 100, sessionId })
+});
+
+// Process themes
+const response = await fetch('/api/themes/process', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ sessionId })
+});
+```
 
 ## Troubleshooting
 
-### Common Issues
+### No Question Generated
 
-#### UI Not Loading
-- Check that Docker Compose is running: `docker-compose ps`
-- Verify Streamlit service is up: `docker-compose logs streamlit`
-- Try refreshing the browser
+**Problem**: Generate question button doesn't work
 
-#### Processing Errors
-- Check Ollama service: `docker-compose logs ollama`
-- Verify database connection: `docker-compose logs postgres`
-- Clear data and try again
+**Solutions:**
+- Check Ollama is running: `ollama list`
+- Check browser console for errors
+- Verify API endpoint: http://localhost:3000/api/health
+- Check network tab in DevTools
 
-#### Performance Issues
-- Reduce batch size in configuration
+### Slow Response Generation
+
+**Problem**: Taking too long to generate responses
+
+**Causes:**
+- Ollama model loading (first time)
+- System resources (CPU/RAM)
+- Model size (larger = slower)
+
+**Solutions:**
+- Wait for first generation (model loads)
+- Use smaller model: `llama3.2:3b`
+- Close other applications
 - Check system resources
-- Restart services: `docker-compose restart`
 
-### Debug Mode
+### Processing Fails
 
-Enable debug logging by setting environment variables:
-```bash
-export LOG_LEVEL=DEBUG
-docker-compose up
-```
+**Problem**: Theme processing errors out
 
-### Reset Everything
+**Solutions:**
+- Check browser console for error message
+- Verify responses exist in database
+- Check Ollama is responding: `curl localhost:11434/api/version`
+- Restart application if needed
 
-If you encounter persistent issues:
-```bash
-docker-compose down -v
-docker-compose up
-```
+### Data Not Showing
+
+**Problem**: Stats show 0 or data missing
+
+**Solutions:**
+- Refresh the page
+- Check correct session ID
+- Verify database file exists: `ls theme-evolution.db`
+- Clear browser cache
+- Check API responses in network tab
+
+### Clear Data Not Working
+
+**Problem**: Data persists after clearing
+
+**Solutions:**
+- Hard refresh: Cmd/Ctrl + Shift + R
+- Clear localStorage in DevTools
+- Delete database file: `rm theme-evolution.db`
+- Restart application
+
+## Performance Tips
+
+### Optimal Workflow
+
+1. **Generate in batches**: 100 responses at a time
+2. **Process incrementally**: After each batch
+3. **Review regularly**: Check themes after processing
+4. **Clear periodically**: Start fresh for new experiments
+
+### System Resources
+
+- **CPU**: Higher CPU = faster generation
+- **RAM**: 4GB minimum, 8GB recommended
+- **Disk**: SQLite grows with data (plan accordingly)
+- **Network**: Only needed for cloud LLM providers
+
+### Scaling Considerations
+
+- SQLite handles 1000s of responses fine
+- For 10,000+ responses, consider PostgreSQL
+- Batch processing prevents memory issues
+- Theme evolution maintains performance
 
 ## Best Practices
 
-### 1. Workflow Optimization
-- Generate questions that are specific and focused
-- Process batches regularly to see theme evolution
-- Use the analysis tab to understand patterns
+### 1. Question Design
 
-### 2. Data Management
-- Clear data between different experiments
-- Monitor processing metrics for performance
-- Export results for external analysis
+- Keep questions focused and specific
+- Avoid yes/no questions
+- Use open-ended phrasing
+- Target specific topics
 
-### 3. Theme Analysis
-- Focus on high-confidence themes
-- Review keyword highlights for insights
-- Track theme evolution over multiple batches
+### 2. Response Analysis
+
+- Process themes after each batch
+- Review theme descriptions
+- Check confidence scores
+- Verify keyword highlights make sense
+
+### 3. Theme Management
+
+- Let similar themes merge naturally
+- High confidence = good themes
+- Low confidence = review manually
+- Multiple batches improve quality
+
+### 4. Data Management
+
+- Clear data between experiments
+- Export results before clearing
+- Monitor database file size
+- Backup important results
 
 ## Integration
 
-### API Access
-The system also provides programmatic access:
-```python
-from src.theme_processor import ThemeProcessor
-processor = ThemeProcessor()
-result = processor.process_batch(batch_data)
+### Programmatic Usage
+
+```typescript
+// Example: Automated testing
+async function runExperiment(topic: string) {
+  // Generate question about topic
+  const question = await generateQuestion();
+  
+  // Generate responses
+  for (let batch = 1; batch <= 5; batch++) {
+    await generateResponses(100);
+    await processThemes();
+  }
+  
+  // Analyze results
+  const themes = await getThemes();
+  return analyzeThemes(themes);
+}
 ```
 
-### Database Queries
-Direct database access for advanced analysis:
-```python
-from src.database import DatabaseManager
-db = DatabaseManager()
-themes = db.get_all_themes()
+### Export Data
+
+```typescript
+// Export themes and responses
+async function exportData(sessionId: string) {
+  const themes = await fetch(`/api/themes?sessionId=${sessionId}`);
+  const responses = await fetch(`/api/responses?sessionId=${sessionId}`);
+  
+  return {
+    themes: await themes.json(),
+    responses: await responses.json()
+  };
+}
 ```
-
-### Data Generation Options
-- **Streamlit UI**: Interactive, on-demand generation
-- **Programmatic**: Custom data generation via Python API
-
-### Testing and Benchmarking
-All testing is done through the Streamlit UI:
-- Generate multiple questions and responses
-- Process batches to test theme evolution
-- Use the analysis tab to monitor performance
-- Test with different question types and response patterns
 
 ## Next Steps
 
-1. **Experiment**: Try different questions and response patterns
-2. **Analyze**: Use the analysis tab to understand theme evolution
-3. **Scale**: Process larger datasets to see system performance
-4. **Customize**: Modify configuration for your specific needs
+1. **Experiment**: Try different question types
+2. **Analyze**: Study theme evolution patterns
+3. **Iterate**: Process multiple batches
+4. **Export**: Save interesting results
+5. **Scale**: Test with larger datasets
+6. **Customize**: Modify code for specific needs
 
-The Streamlit UI makes the Theme Evolution System accessible to users of all technical levels while providing powerful analysis capabilities for advanced users.
+## Related Documentation
+
+- [Setup Guide](setup.md) - Installation instructions
+- [Architecture](architecture.md) - System design
+- [Database Schema](database_schema.md) - Data structure
+- [Testing Guide](testing.md) - Testing strategies

@@ -6,254 +6,388 @@ This guide will help you set up the Theme Evolution System on your local machine
 
 ### Required Software
 
-1. **Docker** (version 20.10+)
-   - [Install Docker Desktop](https://www.docker.com/products/docker-desktop)
-   - Verify installation: `docker --version`
+1. **Bun** (JavaScript runtime)
+   - [Install Bun](https://bun.sh/docs/installation)
+   - macOS/Linux: `curl -fsSL https://bun.sh/install | bash`
+   - Windows: `powershell -c "irm bun.sh/install.ps1|iex"`
+   - Verify: `bun --version`
 
-2. **Docker Compose** (version 2.0+)
-   - Usually included with Docker Desktop
-   - Verify installation: `docker-compose --version`
+2. **Ollama** (LLM runtime)
+   - [Install Ollama](https://ollama.ai/download)
+   - macOS: `brew install ollama`
+   - Linux: `curl -fsSL https://ollama.ai/install.sh | sh`
+   - Windows: Download from website
+   - Verify: `ollama --version`
 
 3. **Git**
    - [Install Git](https://git-scm.com/downloads)
-   - Verify installation: `git --version`
+   - Verify: `git --version`
 
-### System Requirements
+### Optional: Cloud LLM Providers
 
-- **RAM**: 8GB minimum, 16GB recommended
-- **Disk Space**: 10GB free space
-- **CPU**: 4+ cores recommended
-- **OS**: Linux, macOS, or Windows with WSL2
+If you prefer cloud-based LLMs instead of local Ollama:
+- **OpenAI**: Get API key from [platform.openai.com](https://platform.openai.com)
+- **Gemini**: Get API key from [aistudio.google.com](https://aistudio.google.com)
 
 ## Installation Steps
 
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/arnabk/theme-evolution-system.git
 cd theme-evolution-system
 ```
 
-### 2. Start Services
+### 2. Install Dependencies
 
 ```bash
-docker-compose up
+bun install
 ```
 
-This will automatically:
-- Download and set up PostgreSQL with pgvector extension
-- Download Ollama and required models (Llama 3.1, nomic-embed-text)
-- Set up database schema
-- Launch Streamlit UI at http://localhost:8501
-- Create host directories: `data/`, `outputs/`, `logs/`
+This installs all required packages:
+- Next.js 15
+- React 19
+- TypeORM
+- SQLite3
+- Tailwind CSS
+- Other dependencies
 
-### 3. Access the Streamlit UI
+### 3. Set Up Ollama (Recommended)
 
-Open your browser and navigate to:
-```
-http://localhost:8501
-```
-
-The Streamlit UI provides:
-- 🎯 Generate random survey questions
-- 📝 Generate 100 synthetic responses
-- ⚡ Process batches with theme extraction
-- 📊 Interactive dashboards and visualizations
-- 🔍 Theme analysis and keyword highlighting
-
-### 4. Verify Installation
-
-Check that all services are running:
+**Start Ollama service** (keep this running in a terminal):
 
 ```bash
-docker-compose ps
+ollama serve
 ```
 
-You should see all services with "Up" status.
+**In a new terminal, pull the required models:**
 
-### 5. Volume Structure
+```bash
+# Generation model (2GB)
+ollama pull llama3.2:3b
 
-The system creates the following host directories:
+# Embedding model (274MB)
+ollama pull nomic-embed-text
 
+# Verify models are installed
+ollama list
 ```
-project-root/
-├── data/           # Input data, synthetic responses
-├── outputs/        # Processing results, exports
-└── logs/           # Application logs
+
+**Why llama3.2:3b?**
+- Fast inference for interactive use
+- Excellent quality for text generation
+- Optimized for modern hardware
+- Small footprint (2GB)
+
+### 4. Configure Environment (Optional)
+
+Create `.env` file for custom configuration:
+
+```bash
+# Copy example
+cp .env.example .env
 ```
 
-**Volume Benefits:**
-- **Data Persistence**: All data survives container restarts
-- **Easy Access**: Files accessible from host system
-- **Backup Friendly**: Simple to backup and restore
-- **Development**: Easy to inspect and modify data
+**Default configuration (works out of the box):**
+```bash
+# LLM Provider
+LLM_PROVIDER=ollama  # or openai, gemini
+
+# Ollama (default)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2:3b
+
+# OpenAI (optional)
+# OPENAI_API_KEY=sk-...
+# OPENAI_MODEL=gpt-4o-mini
+
+# Gemini (optional)
+# GEMINI_API_KEY=...
+# GEMINI_MODEL=gemini-1.5-flash
+```
+
+### 5. Start the Application
+
+```bash
+bun dev
+```
+
+The application will:
+- Start Next.js development server
+- Auto-create SQLite database (`theme-evolution.db`)
+- Sync database schema with TypeORM entities
+- Be available at http://localhost:3000
+
+**Output:**
+```
+✓ Ready in 1.2s
+○ Compiling / ...
+✓ Compiled / in 500ms
+```
+
+### 6. Access the Application
+
+Open your browser:
+```
+http://localhost:3000
+```
+
+You should see the Theme Evolution System interface with:
+- **Dashboard** tab - Statistics and metrics
+- **Themes** tab - Theme list with responses
+- **Responses** tab - All responses
+
+## Verification
+
+### Check All Services
+
+1. **Application**: http://localhost:3000 should load
+2. **API**: http://localhost:3000/api/health should return `{"status":"ok"}`
+3. **Ollama**: `ollama list` should show models
+4. **Database**: `theme-evolution.db` file should exist in project root
+
+### Test the System
+
+1. Click **"Generate Random Question"** - Should create a survey question
+2. Click **"Generate 100 Responses"** - Should create synthetic responses
+3. Click **"Process Themes"** - Should extract and display themes
+4. Navigate to **Themes** tab - Should see extracted themes with responses
 
 ## Troubleshooting
 
 ### Common Issues
 
-#### 1. Docker Not Running
-```
-Error: Cannot connect to the Docker daemon
-```
-**Solution**: Start Docker Desktop or Docker daemon
+#### 1. Bun Not Found
 
-#### 2. Port Conflicts
 ```
-Error: Port 5432 is already in use
+Error: bun: command not found
 ```
-**Solution**: Stop existing PostgreSQL service or change port in docker-compose.yml
 
-#### 3. Out of Memory
+**Solution**: Install Bun and restart your terminal
+```bash
+curl -fsSL https://bun.sh/install | bash
+source ~/.bashrc  # or ~/.zshrc
 ```
-Error: Container killed due to OOM
-```
-**Solution**: Increase Docker memory limit to 8GB+ in Docker Desktop settings
 
-#### 4. Ollama Model Not Found
+#### 2. Ollama Not Running
+
 ```
-Error: Model llama3.1 not found
+Error: Failed to connect to Ollama
 ```
-**Solution**: The model will be downloaded automatically on first use. Wait for download to complete.
+
+**Solution**: Start Ollama service
+```bash
+ollama serve
+# Keep this terminal open
+```
+
+#### 3. Port 3000 Already in Use
+
+```
+Error: Port 3000 is already in use
+```
+
+**Solution**: Stop other services or use different port
+```bash
+# Use different port
+PORT=3001 bun dev
+```
+
+#### 4. Models Not Downloaded
+
+```
+Error: Model llama3.2:3b not found
+```
+
+**Solution**: Download required models
+```bash
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+```
+
+#### 5. Database Errors
+
+```
+Error: SQLITE_CANTOPEN
+```
+
+**Solution**: Ensure write permissions in project directory
+```bash
+# Check permissions
+ls -la theme-evolution.db
+
+# Fix if needed
+chmod 644 theme-evolution.db
+```
 
 ### Service Health Checks
 
-Check individual service health:
-
+**Check Ollama:**
 ```bash
-# Check PostgreSQL
-docker-compose exec postgres pg_isready -U postgres
-
-# Check Ollama
-curl http://localhost:11434/api/tags
-
-# Check application logs
-docker-compose logs app
+curl http://localhost:11434/api/version
 ```
 
-### Reset Everything
-
-If you need to start fresh:
-
+**Check Application API:**
 ```bash
-# Stop and remove all containers
-docker-compose down -v
-
-# Remove all data volumes
-docker volume prune
-
-# Restart setup
-docker-compose up
+curl http://localhost:3000/api/health
 ```
 
-## Development Setup
-
-For development work:
-
-### 1. Install Python Dependencies Locally
-
+**Check Database:**
 ```bash
-pip install -r requirements.txt
+sqlite3 theme-evolution.db ".tables"
 ```
 
-### 2. Set Up Local Database
+## Alternative: Cloud LLM Setup
+
+### Using OpenAI
 
 ```bash
-# Install PostgreSQL with pgvector
-# Ubuntu/Debian:
-sudo apt-get install postgresql postgresql-contrib
-sudo apt-get install postgresql-16-pgvector
-
-# macOS:
-brew install postgresql
-brew install pgvector
+# .env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-4o-mini
 ```
 
-### 3. Run Tests
+**Pros**: Faster, more capable models
+**Cons**: Requires API key, costs money per request
+
+### Using Gemini
 
 ```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_models.py
-
-# Run with coverage
-pytest --cov=src tests/
+# .env
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-key-here
+GEMINI_MODEL=gemini-1.5-flash
 ```
 
-### 4. Code Quality
+**Pros**: Free tier available, fast responses
+**Cons**: Requires API key, usage limits
+
+## Development Workflow
+
+### Hot Reloading
+
+The application has **automatic hot reloading**:
+- Edit any file in `src/`
+- Save the file
+- Browser automatically refreshes
+- No manual restart needed!
+
+### Development Commands
 
 ```bash
-# Format code
-black src/ tests/
+# Start development server
+bun dev
 
-# Lint code
-flake8 src/ tests/
+# Build for production
+bun run build
 
-# Type checking
-mypy src/
+# Start production server
+bun start
+
+# Run linter
+bun run lint
+```
+
+### File Structure
+
+```
+theme-evolution-system/
+├── src/
+│   ├── app/           # Next.js pages and API routes
+│   ├── components/    # React components
+│   └── lib/           # Business logic and database
+├── theme-evolution.db # SQLite database (auto-created)
+├── package.json       # Dependencies
+├── tsconfig.json      # TypeScript config
+└── next.config.ts     # Next.js config
+```
+
+## Database Management
+
+### View Database
+
+```bash
+# Using sqlite3 CLI
+sqlite3 theme-evolution.db
+
+# List tables
+.tables
+
+# View table schema
+.schema themes
+
+# Query data
+SELECT * FROM themes LIMIT 5;
+
+# Exit
+.quit
+```
+
+### Reset Database
+
+```bash
+# Delete database file (will be recreated on next start)
+rm theme-evolution.db
+
+# Restart application
+bun dev
+```
+
+### Backup Database
+
+```bash
+# Create backup
+cp theme-evolution.db backup-$(date +%Y%m%d).db
+
+# Restore from backup
+cp backup-20240101.db theme-evolution.db
 ```
 
 ## Production Deployment
 
-For production deployment:
-
-### 1. Environment Variables
-
-Set production environment variables:
+### Build for Production
 
 ```bash
-export DB_PASSWORD=<secure-password>
-export OLLAMA_BASE_URL=http://ollama:11434
-export LOG_LEVEL=WARNING
+# Build optimized production bundle
+bun run build
+
+# Start production server
+bun start
 ```
 
-### 2. Resource Limits
+### Environment Variables
 
-Update docker-compose.yml with production resource limits:
-
-```yaml
-services:
-  app:
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: '2.0'
+Set required environment variables:
+```bash
+NODE_ENV=production
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-### 3. Data Persistence
+### Considerations
 
-Ensure data volumes are properly configured:
-
-```yaml
-volumes:
-  postgres_data:
-    driver: local
-  ollama_data:
-    driver: local
-```
-
-### 4. Monitoring
-
-Add monitoring and logging:
-
-```yaml
-services:
-  app:
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-```
+- Use PostgreSQL instead of SQLite for production
+- Set up proper logging and monitoring
+- Configure CORS for API endpoints
+- Use environment-specific configs
+- Set up automated backups
+- Consider using managed LLM services
 
 ## Next Steps
 
 Once setup is complete:
 
 1. Read the [Usage Guide](usage.md) to learn how to use the system
-2. Explore the [Architecture](architecture.md) to understand the system design
-3. Check the [API Reference](api_reference.md) for detailed documentation
-4. Run the demo to see the system in action
+2. Explore the [Architecture](architecture.md) to understand the design
+3. Check the [Database Schema](database_schema.md) for data structure
+4. Review the [Project Proposal](project_proposal.md) for project goals
+
+## Support
+
+If you encounter issues:
+1. Check this troubleshooting section
+2. Review error messages in terminal
+3. Check browser console for frontend errors
+4. Verify all prerequisites are installed
+5. Ensure Ollama is running and models are downloaded

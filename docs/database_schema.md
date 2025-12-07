@@ -4,317 +4,376 @@ This document describes the database schema for the Theme Evolution System.
 
 ## Overview
 
-The system uses PostgreSQL with the pgvector extension for efficient vector similarity search. All tables are designed to support the theme evolution workflow with proper indexing and relationships.
+The system uses **SQLite** with **TypeORM** for database operations. The schema is automatically created and synchronized on application startup - no manual migrations required.
+
+**Database File**: `theme-evolution.db` (SQLite file in project root)
+
+## TypeORM Entities
+
+All entities are defined in `src/lib/entities/` and use TypeORM decorators for auto-schema generation.
 
 ## Core Tables
 
-### 1. extracted_themes
+### 1. themes
 
-Stores the themes extracted from survey responses.
+Stores themes extracted from survey responses.
 
-```sql
-CREATE TABLE extracted_themes (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    embedding VECTOR(768),  -- nomic-embed-text dimensions
-    created_at_batch INTEGER NOT NULL,
-    last_updated_batch INTEGER,
-    status VARCHAR(50) DEFAULT 'active',
-    parent_theme_id INTEGER REFERENCES extracted_themes(id),
-    response_count INTEGER DEFAULT 0,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+```typescript
+@Entity('themes')
+export class Theme {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'text' })
+  session_id: string;
+
+  @Column({ type: 'text' })
+  name: string;
+
+  @Column({ type: 'text' })
+  description: string;
+
+  @Column({ type: 'real' })
+  confidence: number;
+
+  @Column({ type: 'text', nullable: true })
+  centroid_embedding: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  is_active: boolean;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+}
 ```
 
 **Fields:**
-- `id`: Unique theme identifier
-- `name`: Theme name (e.g., "API Integration Challenges")
-- `description`: Detailed theme description
-- `embedding`: Vector embedding for similarity search
-- `created_at_batch`: Batch number when theme was first created
-- `last_updated_batch`: Batch number when theme was last updated
-- `status`: Theme status (active, merged, split, deleted)
-- `parent_theme_id`: Reference to parent theme (for splits)
-- `response_count`: Number of responses assigned to this theme
-- `metadata`: Additional theme metadata (JSON)
+- `id` - Auto-incrementing primary key
+- `session_id` - Session identifier for data isolation
+- `name` - Theme name (e.g., "Remote Work Challenges")
+- `description` - Detailed theme description
+- `confidence` - Confidence score (0.0 to 1.0)
+- `centroid_embedding` - JSON string of centroid embedding vector
+- `is_active` - Whether theme is currently active
+- `created_at` - Timestamp when theme was created
+- `updated_at` - Timestamp when theme was last updated
 
-### 2. survey_responses
+### 2. responses
 
 Stores individual survey responses.
 
-```sql
-CREATE TABLE survey_responses (
-    id SERIAL PRIMARY KEY,
-    batch_id INTEGER NOT NULL,
-    question TEXT NOT NULL,
-    response_text TEXT NOT NULL,
-    embedding VECTOR(768),
-    processed_at TIMESTAMP DEFAULT NOW()
-);
+```typescript
+@Entity('responses')
+export class Response {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'text' })
+  session_id: string;
+
+  @Column({ type: 'text' })
+  response_text: string;
+
+  @Column({ type: 'integer' })
+  batch_id: number;
+
+  @Column({ type: 'text' })
+  question: string;
+
+  @CreateDateColumn()
+  created_at: Date;
+}
 ```
 
 **Fields:**
-- `id`: Unique response identifier
-- `batch_id`: Batch number this response belongs to
-- `question`: The survey question
-- `response_text`: The actual response text
-- `embedding`: Vector embedding for similarity search
-- `processed_at`: When the response was processed
+- `id` - Auto-incrementing primary key
+- `session_id` - Session identifier
+- `response_text` - The actual response text
+- `batch_id` - Batch number this response belongs to
+- `question` - The survey question being answered
+- `created_at` - Timestamp when response was created
 
-### 3. theme_assignments
+### 3. response_theme_assignments
 
 Maps responses to themes with confidence scores and highlighted keywords.
 
-```sql
-CREATE TABLE theme_assignments (
-    id SERIAL PRIMARY KEY,
-    response_id INTEGER REFERENCES survey_responses(id) ON DELETE CASCADE,
-    theme_id INTEGER REFERENCES extracted_themes(id) ON DELETE CASCADE,
-    confidence_score FLOAT CHECK (confidence_score >= 0 AND confidence_score <= 1),
-    highlighted_keywords JSONB,
-    assigned_at_batch INTEGER NOT NULL,
-    last_updated_batch INTEGER,
-    UNIQUE(response_id, theme_id)
-);
+```typescript
+@Entity('response_theme_assignments')
+export class ThemeAssignment {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'integer' })
+  response_id: number;
+
+  @Column({ type: 'integer' })
+  theme_id: number;
+
+  @Column({ type: 'real' })
+  confidence: number;
+
+  @Column({ type: 'text', nullable: true })
+  highlighted_keywords: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  contributing_text: string | null;
+
+  @CreateDateColumn()
+  created_at: Date;
+}
 ```
 
 **Fields:**
-- `id`: Unique assignment identifier
-- `response_id`: Reference to survey response
-- `theme_id`: Reference to theme
-- `confidence_score`: Similarity score (0-1)
-- `highlighted_keywords`: JSON array of highlighted keywords with scores
-- `assigned_at_batch`: Batch when assignment was made
-- `last_updated_batch`: Batch when assignment was last updated
+- `id` - Auto-incrementing primary key
+- `response_id` - Foreign key to responses table
+- `theme_id` - Foreign key to themes table
+- `confidence` - Similarity score (0.0 to 1.0)
+- `highlighted_keywords` - JSON array: `[{ text: string, start: number, end: number }]`
+- `contributing_text` - The specific text that matched the theme
+- `created_at` - Timestamp when assignment was created
 
-### 4. theme_evolution_log
+### 4. sessions
 
-Tracks all theme changes over time.
+Stores session state for multi-user support.
 
-```sql
-CREATE TABLE theme_evolution_log (
-    id SERIAL PRIMARY KEY,
-    batch_id INTEGER NOT NULL,
-    action VARCHAR(50) NOT NULL,
-    theme_id INTEGER REFERENCES extracted_themes(id),
-    related_theme_id INTEGER REFERENCES extracted_themes(id),
-    details JSONB,
-    affected_response_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+```typescript
+@Entity('sessions')
+export class Session {
+  @PrimaryColumn({ type: 'text' })
+  session_id: string;
+
+  @Column({ type: 'text', nullable: true })
+  current_question: string | null;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+}
 ```
 
 **Fields:**
-- `id`: Unique log entry identifier
-- `batch_id`: Batch number when change occurred
-- `action`: Type of change (created, updated, merged, split, deleted)
-- `theme_id`: Primary theme involved
-- `related_theme_id`: Secondary theme (for merges/splits)
-- `details`: Additional change details (JSON)
-- `affected_response_count`: Number of responses affected
-
-### 5. batch_metadata
-
-Stores processing metadata for each batch.
-
-```sql
-CREATE TABLE batch_metadata (
-    batch_id INTEGER PRIMARY KEY,
-    question TEXT NOT NULL,
-    total_responses INTEGER,
-    new_themes_count INTEGER DEFAULT 0,
-    updated_themes_count INTEGER DEFAULT 0,
-    deleted_themes_count INTEGER DEFAULT 0,
-    processing_time_seconds FLOAT,
-    processed_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-**Fields:**
-- `batch_id`: Batch identifier
-- `question`: Survey question for this batch
-- `total_responses`: Number of responses in batch
-- `new_themes_count`: Number of new themes created
-- `updated_themes_count`: Number of themes updated
-- `deleted_themes_count`: Number of themes deleted/merged
-- `processing_time_seconds`: Time taken to process batch
-- `processed_at`: When batch was processed
-
-### 6. embedding_cache
-
-Caches embeddings for performance optimization.
-
-```sql
-CREATE TABLE embedding_cache (
-    id SERIAL PRIMARY KEY,
-    text_hash VARCHAR(64) UNIQUE NOT NULL,
-    embedding VECTOR(768),
-    model_name VARCHAR(100) DEFAULT 'nomic-embed-text',
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-**Fields:**
-- `id`: Unique cache entry identifier
-- `text_hash`: SHA-256 hash of the text
-- `embedding`: Cached embedding vector
-- `model_name`: Embedding model used
-- `created_at`: When embedding was cached
-
-## Indexes
-
-### Performance Indexes
-
-```sql
--- Vector similarity search indexes
-CREATE INDEX idx_themes_embedding ON extracted_themes USING ivfflat (embedding vector_cosine_ops);
-CREATE INDEX idx_responses_embedding ON survey_responses USING ivfflat (embedding vector_cosine_ops);
-
--- Status and batch indexes
-CREATE INDEX idx_themes_status ON extracted_themes(status);
-CREATE INDEX idx_responses_batch ON survey_responses(batch_id);
-
--- Assignment indexes
-CREATE INDEX idx_assignments_response ON theme_assignments(response_id);
-CREATE INDEX idx_assignments_theme ON theme_assignments(theme_id);
-
--- Evolution log index
-CREATE INDEX idx_evolution_batch ON theme_evolution_log(batch_id);
-
--- Cache index
-CREATE INDEX idx_embedding_cache_hash ON embedding_cache(text_hash);
-```
+- `session_id` - Session identifier (primary key)
+- `current_question` - Current active question
+- `created_at` - Timestamp when session was created
+- `updated_at` - Timestamp when session was last updated
 
 ## Relationships
 
 ### Entity Relationship Diagram
 
 ```
-survey_responses (1) ←→ (M) theme_assignments (M) ←→ (1) extracted_themes
-        ↓                           ↓
-   batch_metadata              theme_evolution_log
-        ↓
-   embedding_cache
+sessions (1) ←→ (M) responses
+sessions (1) ←→ (M) themes
+
+responses (1) ←→ (M) response_theme_assignments (M) ←→ (1) themes
 ```
 
 ### Key Relationships
 
-1. **Survey Response → Theme Assignment**: One-to-many
-2. **Theme → Theme Assignment**: One-to-many
-3. **Theme → Theme Evolution Log**: One-to-many
-4. **Batch → Survey Responses**: One-to-many
-5. **Batch → Batch Metadata**: One-to-one
-
-## Vector Operations
-
-### Similarity Search
-
-The system uses cosine similarity for theme matching:
-
-```sql
--- Find similar themes
-SELECT *, 1 - (embedding <=> %s) as similarity
-FROM extracted_themes 
-WHERE status = 'active' AND 1 - (embedding <=> %s) > %s
-ORDER BY embedding <=> %s
-LIMIT %s;
-
--- Find similar responses
-SELECT *, 1 - (embedding <=> %s) as similarity
-FROM survey_responses 
-WHERE embedding IS NOT NULL AND 1 - (embedding <=> %s) > %s
-ORDER BY embedding <=> %s
-LIMIT %s;
-```
-
-### Distance Operators
-
-- `<=>`: Cosine distance (0 = identical, 2 = opposite)
-- `1 - (embedding <=> embedding)`: Cosine similarity (0 = opposite, 1 = identical)
+1. **Session → Responses**: One-to-many (session has many responses)
+2. **Session → Themes**: One-to-many (session has many themes)
+3. **Response → Theme**: Many-to-many through `response_theme_assignments`
+4. **Response → ThemeAssignment**: One-to-many
+5. **Theme → ThemeAssignment**: One-to-many
 
 ## Data Types
 
-### Vector Dimensions
+### SQLite Type Mapping
 
-- **Embedding Size**: 768 dimensions (nomic-embed-text)
-- **Vector Type**: `VECTOR(768)`
-- **Index Type**: `ivfflat` for fast approximate search
+TypeORM automatically maps TypeScript types to SQLite types:
+
+| TypeScript Type | SQLite Type | Example |
+|----------------|-------------|---------|
+| `number` (int) | `INTEGER` | `id`, `batch_id` |
+| `number` (float) | `REAL` | `confidence` |
+| `string` | `TEXT` | `name`, `description` |
+| `boolean` | `BOOLEAN` (0/1) | `is_active` |
+| `Date` | `DATETIME` | `created_at` |
+| `string \| null` | `TEXT` (nullable) | `centroid_embedding` |
 
 ### JSON Fields
 
-- **highlighted_keywords**: Array of keyword objects with scores and positions
-- **metadata**: Theme metadata including extraction method, model info
-- **details**: Evolution log details including change descriptions
+Several fields store JSON as text strings:
+
+- **`centroid_embedding`**: Array of numbers (embedding vector)
+  ```json
+  "[0.1, 0.2, 0.3, ...]"
+  ```
+
+- **`highlighted_keywords`**: Array of keyword objects
+  ```json
+  "[{\"text\": \"remote\", \"start\": 0, \"end\": 6}, ...]"
+  ```
+
+## Indexes
+
+TypeORM automatically creates indexes for:
+- Primary keys (`id`, `session_id`)
+- Foreign keys (implicit through relationships)
+
+No manual index creation required for current scale.
+
+## Schema Management
+
+### Auto-Sync on Startup
+
+The database schema is automatically created/updated when the application starts:
+
+```typescript
+// src/lib/data-source.ts
+const AppDataSource = new DataSource({
+  type: 'sqlite',
+  database: 'theme-evolution.db',
+  synchronize: true,  // Auto-sync schema
+  logging: false,
+  entities: [Theme, Response, ThemeAssignment, Session]
+});
+```
+
+**Benefits:**
+- No manual migrations
+- Schema always matches entities
+- Fast development iteration
+- Type-safe operations
+
+**Caution:**
+- Not recommended for production
+- Can cause data loss if schema changes significantly
+- Use migrations for production deployments
+
+## Database Operations
+
+### Query Examples
+
+**Get all themes for a session:**
+```typescript
+const themes = await dataSource.getRepository(Theme).find({
+  where: { session_id: 'session-123', is_active: true },
+  order: { confidence: 'DESC' }
+});
+```
+
+**Get responses with theme assignments:**
+```typescript
+const assignments = await dataSource.getRepository(ThemeAssignment)
+  .createQueryBuilder('assignment')
+  .leftJoinAndSelect('responses', 'r', 'r.id = assignment.response_id')
+  .leftJoinAndSelect('themes', 't', 't.id = assignment.theme_id')
+  .where('t.session_id = :sessionId', { sessionId })
+  .getMany();
+```
+
+**Count statistics:**
+```typescript
+const stats = {
+  totalResponses: await responseRepo.count({ where: { session_id } }),
+  totalThemes: await themeRepo.count({ where: { session_id, is_active: true } }),
+  totalAssignments: await assignmentRepo.count()
+};
+```
 
 ## Performance Considerations
 
-### Query Optimization
+### Current Setup
 
-1. **Vector Search**: Use IVFFlat indexes for fast similarity search
-2. **Batch Queries**: Filter by batch_id for efficient data retrieval
-3. **Status Filtering**: Use status indexes for active theme queries
-4. **Cache Hits**: Check embedding_cache before generating new embeddings
+- **SQLite** is single-writer (file-based)
+- **No connection pooling** needed
+- **Fast for read-heavy workloads**
+- **Good for development** and small-to-medium datasets
 
-### Storage Optimization
+### Optimization Tips
 
-1. **Embedding Compression**: Consider compression for large datasets
-2. **Index Maintenance**: Regular VACUUM and ANALYZE operations
-3. **Partitioning**: Consider partitioning by batch_id for very large datasets
+1. **Indexes**: Add custom indexes for frequent queries
+2. **Batch Operations**: Use `save([])` for bulk inserts
+3. **Query Builder**: Use for complex queries
+4. **Transactions**: Wrap multi-table operations
+
+### Scaling Considerations
+
+For production or large-scale use:
+- Consider PostgreSQL for concurrent writes
+- Add vector extension (pgvector) for similarity search
+- Implement connection pooling
+- Add read replicas for scaling
 
 ## Backup and Recovery
 
-### Backup Strategy
+### Manual Backup
 
 ```bash
-# Full database backup
-pg_dump -h localhost -U postgres theme_evolution > backup.sql
+# Backup database file
+cp theme-evolution.db theme-evolution.backup.db
 
-# Schema-only backup
-pg_dump -h localhost -U postgres --schema-only theme_evolution > schema.sql
-
-# Data-only backup
-pg_dump -h localhost -U postgres --data-only theme_evolution > data.sql
-```
-
-### Recovery
-
-```bash
 # Restore from backup
-psql -h localhost -U postgres theme_evolution < backup.sql
+cp theme-evolution.backup.db theme-evolution.db
 ```
+
+### Automated Backup
+
+```typescript
+import { copyFileSync } from 'fs';
+import { format } from 'date-fns';
+
+const timestamp = format(new Date(), 'yyyy-MM-dd-HHmmss');
+copyFileSync('theme-evolution.db', `backups/theme-evolution-${timestamp}.db`);
+```
+
+## Migration to Production Database
+
+When migrating to PostgreSQL:
+
+1. Update `data-source.ts` configuration
+2. Install `pg` driver: `bun add pg`
+3. Update type mappings if needed
+4. Add pgvector extension for similarity search
+5. Implement proper migrations with TypeORM
+6. Test thoroughly before deployment
 
 ## Monitoring
 
-### Key Metrics
+### Database Health Checks
 
-1. **Database Size**: Monitor growth of vector embeddings
-2. **Query Performance**: Track similarity search times
-3. **Cache Hit Rate**: Monitor embedding cache effectiveness
-4. **Index Usage**: Ensure indexes are being used effectively
-
-### Health Checks
-
-```sql
--- Check database health
-SELECT 
-    schemaname,
-    tablename,
-    attname,
-    n_distinct,
-    correlation
-FROM pg_stats 
-WHERE tablename IN ('extracted_themes', 'survey_responses');
-
--- Check index usage
-SELECT 
-    schemaname,
-    tablename,
-    indexname,
-    idx_scan,
-    idx_tup_read,
-    idx_tup_fetch
-FROM pg_stat_user_indexes 
-WHERE schemaname = 'public';
+```typescript
+// Check database connectivity
+export async function checkDatabaseHealth(): Promise<boolean> {
+  try {
+    const dataSource = await getDataSource();
+    await dataSource.query('SELECT 1');
+    return true;
+  } catch (error) {
+    console.error('Database health check failed:', error);
+    return false;
+  }
+}
 ```
+
+### Schema Inspection
+
+```bash
+# Using sqlite3 CLI
+sqlite3 theme-evolution.db ".schema"
+
+# List tables
+sqlite3 theme-evolution.db ".tables"
+
+# Inspect table structure
+sqlite3 theme-evolution.db ".schema themes"
+```
+
+## Best Practices
+
+1. **Use TypeORM repositories** for all database operations
+2. **Leverage type safety** - let TypeScript catch errors
+3. **Wrap multi-table operations** in transactions
+4. **Handle nullable fields** appropriately
+5. **Validate data** before saving to database
+6. **Use query builder** for complex queries
+7. **Monitor database file size** and plan for growth
+8. **Regular backups** for important data
+9. **Test schema changes** before deployment
+10. **Consider migrations** for production use

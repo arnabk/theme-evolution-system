@@ -8,5 +8,8 @@
 export * from './span-extractor';
 export * from './span-clusterer';
 export * from './theme-merger';
+export * from './theme-builder';
+export * from './batch-theme-merger';
+export * from './theme-deduplicator';
 export * from './utils';
 

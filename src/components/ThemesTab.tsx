@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ThemesList, ResponsesList } from './themes';
 
 interface Theme {
@@ -40,6 +40,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const currentPageRef = useRef(1);
 
   useEffect(() => {
     if (sessionId) {
@@ -74,6 +75,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
       setLoadingResponses(true);
       setThemeResponses([]);
       setCurrentPage(1);
+      currentPageRef.current = 1;
       setHasMore(true);
     }
 
@@ -83,6 +85,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
       });
       const data = await res.json();
       if (data.success) {
+        console.log(`✅ Loaded ${data.responses.length} responses (page ${page}, hasMore: ${data.hasMore})`);
         if (append) {
           setThemeResponses(prev => [...prev, ...data.responses]);
         } else {
@@ -90,6 +93,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
         }
         setHasMore(data.hasMore || false);
         setCurrentPage(page);
+        currentPageRef.current = page;
       }
     } catch (error) {
       console.error('Failed to load theme responses:', error);
@@ -104,28 +108,14 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
     loadThemeResponses(theme.id, 1, false);
   };
 
-  const loadMore = () => {
+  // Load more handler (called by Intersection Observer in ResponsesList)
+  const handleLoadMore = useCallback(() => {
     if (selectedTheme && hasMore && !loadingMore) {
-      loadThemeResponses(selectedTheme.id, currentPage + 1, true);
+      const nextPage = currentPageRef.current + 1;
+      console.log(`📄 Loading page ${nextPage} for theme ${selectedTheme.id}`);
+      loadThemeResponses(selectedTheme.id, nextPage, true);
     }
-  };
-
-  // Infinite scroll handler
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = window.innerHeight;
-      
-      // Load more when user is 300px from bottom
-      if (scrollHeight - (scrollTop + clientHeight) < 300 && hasMore && !loadingMore && selectedTheme) {
-        loadMore();
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, loadingMore, selectedTheme, currentPage]);
+  }, [selectedTheme, hasMore, loadingMore]);
 
   if (loading) {
     return (
@@ -164,6 +154,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
         loading={loadingResponses}
         loadingMore={loadingMore}
         hasMore={hasMore}
+        onLoadMore={handleLoadMore}
       />
     </div>
   );

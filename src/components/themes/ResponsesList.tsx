@@ -2,6 +2,8 @@
  * ResponsesList - Right panel showing responses with highlighted semantic spans
  */
 
+import { useEffect, useRef, useCallback } from 'react';
+
 interface Highlight {
   text: string;
   start: number;
@@ -23,6 +25,7 @@ interface ResponsesListProps {
   loading: boolean;
   loadingMore: boolean;
   hasMore: boolean;
+  onLoadMore?: () => void;
 }
 
 // Color mapping for different span classes
@@ -54,8 +57,10 @@ export function ResponsesList({
   responses, 
   loading, 
   loadingMore, 
-  hasMore 
+  hasMore,
+  onLoadMore
 }: ResponsesListProps) {
+  const observerTarget = useRef<HTMLDivElement>(null);
   
   /**
    * Highlight text using exact span positions
@@ -117,6 +122,41 @@ export function ResponsesList({
     const classes = new Set(highlights.map(h => h.class || 'keyword'));
     return Array.from(classes);
   };
+
+  /**
+   * Intersection Observer for infinite scroll
+   */
+  useEffect(() => {
+    if (!hasMore || !onLoadMore) {
+      return;
+    }
+
+    const currentTarget = observerTarget.current;
+    if (!currentTarget) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting && hasMore && !loadingMore && onLoadMore) {
+          console.log('🔄 Intersection Observer triggered - loading more responses');
+          onLoadMore();
+        }
+      },
+      { 
+        root: null, // Use viewport
+        rootMargin: '100px', // Trigger 100px before reaching the element
+        threshold: 0.01 // Trigger as soon as any part is visible
+      }
+    );
+
+    observer.observe(currentTarget);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMore, loadingMore, onLoadMore, responses.length]);
 
   if (!selectedTheme) {
     return (
@@ -218,10 +258,19 @@ export function ResponsesList({
                   );
                 })}
                 
-                {loadingMore && (
-                  <div className="text-center py-8">
-                    <div className="inline-block w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
-                    <p className="text-white/40 text-sm mt-2">Loading more...</p>
+                {/* Intersection Observer target - always render when hasMore */}
+                {hasMore && (
+                  <div 
+                    ref={observerTarget} 
+                    className="h-20 flex items-center justify-center"
+                    style={{ minHeight: '80px' }}
+                  >
+                    {loadingMore && (
+                      <>
+                        <div className="inline-block w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                        <p className="text-white/40 text-sm ml-3">Loading more...</p>
+                      </>
+                    )}
                   </div>
                 )}
                 

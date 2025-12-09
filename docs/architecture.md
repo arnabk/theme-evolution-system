@@ -42,9 +42,13 @@ The Theme Evolution System processes survey responses in batches, maintains them
 │  │              Business Logic Layer (lib/)                    │ │
 │  │  ┌───────────────────────────────────────────────────────┐ │ │
 │  │  │    Theme Evolution (theme-evolution/)                 │ │ │
-│  │  │  • theme-extractor.ts  - Extract themes from text     │ │ │
-│  │  │  • theme-merger.ts     - Merge similar themes         │ │ │
-│  │  │  • response-assigner.ts - Assign responses to themes  │ │ │
+│  │  │  • span-extractor.ts      - Extract semantic spans    │ │ │
+│  │  │  • span-clusterer.ts      - Cluster spans into themes │ │ │
+│  │  │  • theme-builder.ts       - Build theme objects       │ │ │
+│  │  │  • batch-theme-merger.ts  - Merge within batch        │ │ │
+│  │  │  • theme-deduplicator.ts  - Remove duplicate spans    │ │ │
+│  │  │  • theme-merger.ts        - Merge with existing themes│ │ │
+│  │  │  • utils.ts               - Shared utilities          │ │ │
 │  │  └───────────────────────────────────────────────────────┘ │ │
 │  │  ┌────────────────────┐  ┌────────────────────┐          │ │
 │  │  │    LLM Client      │  │  Database Client   │          │ │
@@ -61,7 +65,7 @@ The Theme Evolution System processes survey responses in batches, maintains them
 │  │  │  SQLite    │  │  Ollama    │  │  TypeORM Entities  │  │ │
 │  │  │    DB      │  │  (Local)   │  │  • Theme           │  │ │
 │  │  │            │  │            │  │  • Response        │  │ │
-│  │  │            │  │            │  │  • Assignment      │  │ │
+│  │  │            │  │            │  │                    │  │ │
 │  │  │            │  │            │  │  • Session         │  │ │
 │  │  └────────────┘  └────────────┘  └────────────────────┘  │ │
 │  └─────────────────────────────────────────────────────────────┘ │
@@ -111,20 +115,32 @@ RESTful API endpoints for all operations:
 
 #### Theme Evolution Module (`theme-evolution/`)
 
-- **`theme-extractor.ts`** (~147 lines)
-  - Extracts themes from text using LLM
-  - Uses n-gram analysis for keyword extraction
-  - Returns themes with confidence scores
+- **`span-extractor.ts`** (~192 lines)
+  - Extracts semantic spans (goals, pain points, emotions, etc.) using direct LLM calls
+  - Validates extracted phrases exist in original text
+  - Returns spans with character positions
 
-- **`theme-merger.ts`** (~102 lines)
-  - Merges themes with >50% keyword overlap
-  - Combines descriptions intelligently
-  - Updates database atomically
+- **`span-clusterer.ts`** (~210 lines)
+  - Clusters spans semantically into themes using LLM
+  - Assigns spans to themes based on semantic similarity
+  - Generates human-readable theme names and descriptions
 
-- **`response-assigner.ts`** (~81 lines)
-  - Assigns responses to themes
-  - Calculates similarity scores
-  - Highlights contributing keywords
+- **`theme-builder.ts`** (~50 lines)
+  - Builds theme objects with associated response data
+  - Filters spans to only those relevant to each theme
+
+- **`batch-theme-merger.ts`** (~120 lines)
+  - Merges similar themes within a single batch
+  - Uses LLM to identify semantically similar themes
+
+- **`theme-deduplicator.ts`** (~50 lines)
+  - Removes duplicate spans across themes
+  - Ensures each span belongs to only one theme
+
+- **`theme-merger.ts`** (~175 lines)
+  - Merges new themes with existing themes across batches
+  - Uses 80% similarity threshold for merging
+  - Updates phrase lists and response counts
 
 #### LLM Client (`llm.ts`)
 
@@ -151,9 +167,8 @@ TypeORM-based database operations:
 
 #### TypeORM Entities (`lib/entities/`)
 
-- **`Theme.ts`** - Theme entity with confidence scores
-- **`Response.ts`** - Survey response entity
-- **`ThemeAssignment.ts`** - Response-theme mapping with keywords
+- **`Theme.ts`** - Theme entity with phrases (JSON) and response counts
+- **`Response.ts`** - Survey response entity with processed flag
 - **`Session.ts`** - Session state management
 
 #### SQLite Database
@@ -190,9 +205,15 @@ User clicks "Generate Responses"
 ### 3. Theme Processing Flow
 
 ```
-User clicks "Process Batch" 
+User clicks "Extract Themes" 
   → /api/themes/process 
-  → Load unprocessed responses 
+  → Load unprocessed responses
+  → Extract semantic spans (span-extractor.ts)
+  → Cluster spans into themes (span-clusterer.ts)
+  → Build theme objects (theme-builder.ts)
+  → Merge similar themes within batch (batch-theme-merger.ts)
+  → Deduplicate spans (theme-deduplicator.ts)
+  → Merge with existing themes (theme-merger.ts) 
   → ThemeExtractor.extractThemes() 
   → ThemeMerger.mergeThemes() 
   → ResponseAssigner.assignResponses() 

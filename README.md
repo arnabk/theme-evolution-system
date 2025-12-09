@@ -4,8 +4,6 @@
 
 **Tech Stack:** Next.js 15 + TypeScript + React + TypeORM + SQLite + Ollama + Bun
 
-**100% TypeScript • Zero Python • Lightning Fast ⚡**
-
 ---
 
 ## Quick Start

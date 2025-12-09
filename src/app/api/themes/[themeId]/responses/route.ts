@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getDataSource } from '../../../../../lib/data-source';
-import { Response } from '../../../../../lib/entities/Response';
-import { ThemeAssignment } from '../../../../../lib/entities/ThemeAssignment';
+import { getDataSource } from '@/lib/data-source';
+import { Response } from '@/lib/entities/Response';
+import { Theme, ThemePhrase } from '@/lib/entities/Theme';
+import { getErrorMessage } from '@/lib/types';
+
+// Highlight structure for UI
+interface Highlight {
+  text: string;
+  start: number;
+  end: number;
+  class: string;
+}
 
 export async function GET(
   request: Request,
@@ -16,81 +25,131 @@ export async function GET(
     const { themeId: themeIdStr } = await params;
     const themeId = parseInt(themeIdStr);
     
-    // Get pagination params from query string
+    // Get pagination params
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '10');
     
     const dataSource = await getDataSource();
-    const assignmentRepo = dataSource.getRepository(ThemeAssignment);
+    const themeRepo = dataSource.getRepository(Theme);
     const responseRepo = dataSource.getRepository(Response);
 
-    // Get all assignments for this theme
-    const [assignments, totalAssignments] = await assignmentRepo.findAndCount({
-      where: { theme_id: themeId },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+    // Get the theme with its phrases
+    const theme = await themeRepo.findOne({ where: { id: themeId } });
+    if (!theme) {
+      return NextResponse.json({ success: false, error: 'Theme not found' }, { status: 404 });
+    }
+
+    // Parse theme phrases
+    const phrases: ThemePhrase[] = theme.getPhrases();
+    if (phrases.length === 0) {
+      return NextResponse.json({
+        success: true,
+        responses: [],
+        count: 0,
+        total: 0,
+        page,
+        pageSize,
+        hasMore: false,
+      });
+    }
+
+    // Get all responses for this session
+    const allResponses = await responseRepo.find({
+      where: { session_id: sessionId },
+      order: { created_at: 'DESC' }
     });
 
-    // Get the responses with highlights
-    const responsesWithHighlights = await Promise.all(
-      assignments.map(async (assignment) => {
-        const response = await responseRepo.findOne({
-          where: { id: assignment.response_id },
-        });
+    // Find responses that match theme phrases
+    const matchingResponses: Array<{
+      id: number;
+      text: string;
+      highlights: Highlight[];
+      confidence: number;
+    }> = [];
 
-        if (!response) return null;
-
-        // Parse highlighted keywords
-        let highlights: any[] = [];
-        if (assignment.highlighted_keywords) {
-          try {
-            highlights = JSON.parse(assignment.highlighted_keywords as string);
-          } catch (e) {
-            highlights = [];
-          }
-        }
-
-        // Extract keywords from contributing_text
-        const keywords = assignment.contributing_text?.split(',').map(k => k.trim()).filter(k => k) || [];
-
-        // Check if any keywords actually exist in the response text
-        const hasMatchingKeywords = keywords.some(keyword => 
-          response.response_text.toLowerCase().includes(keyword.toLowerCase())
-        );
-
-        // Only return if there are matching keywords
-        if (!hasMatchingKeywords || keywords.length === 0) {
-          return null;
-        }
-
-        return {
+    for (const response of allResponses) {
+      const highlights = findPhraseMatches(response.response_text, phrases);
+      
+      if (highlights.length > 0) {
+        matchingResponses.push({
           id: response.id,
           text: response.response_text,
-          keywords,
           highlights,
-          confidence: assignment.confidence,
-        };
-      })
-    );
+          confidence: Math.min(1, highlights.length * 0.3)  // Confidence based on match count
+        });
+      }
+    }
 
-    const validResponses = responsesWithHighlights.filter(r => r !== null);
+    // Paginate results
+    const total = matchingResponses.length;
+    const startIdx = (page - 1) * pageSize;
+    const paginatedResponses = matchingResponses.slice(startIdx, startIdx + pageSize);
 
     return NextResponse.json({
       success: true,
-      responses: validResponses,
-      count: validResponses.length,
-      total: totalAssignments,
+      responses: paginatedResponses,
+      count: paginatedResponses.length,
+      total,
       page,
       pageSize,
-      hasMore: page * pageSize < totalAssignments,
+      hasMore: startIdx + pageSize < total,
     });
-  } catch (error: any) {
+
+  } catch (error: unknown) {
     console.error('Get theme responses error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
 }
 
+/**
+ * Find all matching phrases in response text
+ */
+function findPhraseMatches(text: string, phrases: ThemePhrase[]): Highlight[] {
+  const highlights: Highlight[] = [];
+  const lowerText = text.toLowerCase();
+  const usedRanges: Array<{ start: number; end: number }> = [];
+
+  for (const phrase of phrases) {
+    const lowerPhrase = phrase.text.toLowerCase();
+    let searchStart = 0;
+
+    while (true) {
+      const foundIndex = lowerText.indexOf(lowerPhrase, searchStart);
+      if (foundIndex === -1) break;
+
+      const endIndex = foundIndex + phrase.text.length;
+
+      // Check for overlap with existing highlights
+      const overlaps = usedRanges.some(r => 
+        (foundIndex >= r.start && foundIndex < r.end) ||
+        (endIndex > r.start && endIndex <= r.end) ||
+        (foundIndex <= r.start && endIndex >= r.end)
+      );
+
+      if (!overlaps) {
+        // Get actual text from response (preserve original case)
+        const actualText = text.substring(foundIndex, endIndex);
+        
+        highlights.push({
+          text: actualText,
+          start: foundIndex,
+          end: endIndex,
+          class: phrase.class
+        });
+        
+        usedRanges.push({ start: foundIndex, end: endIndex });
+      }
+
+      searchStart = foundIndex + 1;
+    }
+  }
+
+  // Sort by position
+  highlights.sort((a, b) => a.start - b.start);
+  
+  return highlights;
+}

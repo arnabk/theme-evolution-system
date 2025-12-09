@@ -44,13 +44,7 @@ cd theme-evolution-system
 bun install
 ```
 
-This installs all required packages:
-- Next.js 15
-- React 19
-- TypeORM
-- SQLite3
-- Tailwind CSS
-- Other dependencies
+This installs all required packages defined in `package.json`.
 
 ### 3. Set Up Ollama (Recommended)
 
@@ -133,9 +127,9 @@ http://localhost:3000
 ```
 
 You should see the Theme Evolution System interface with:
-- **Dashboard** tab - Statistics and metrics
 - **Themes** tab - Theme list with responses
 - **Responses** tab - All responses
+- **Statistics** - Real-time metrics in the sidebar
 
 ## Verification
 
@@ -148,9 +142,9 @@ You should see the Theme Evolution System interface with:
 
 ### Test the System
 
-1. Click **"Generate Random Question"** - Should create a survey question
-2. Click **"Generate 100 Responses"** - Should create synthetic responses
-3. Click **"Process Themes"** - Should extract and display themes
+1. Click **"Generate Question"** - Should create a survey question
+2. Click **"Generate Responses"** - Should create 20 synthetic responses
+3. Click **"Extract Themes"** - Should extract and display themes
 4. Navigate to **Themes** tab - Should see extracted themes with responses
 
 ## Troubleshooting
@@ -289,19 +283,7 @@ bun start
 bun run lint
 ```
 
-### File Structure
-
-```
-theme-evolution-system/
-├── src/
-│   ├── app/           # Next.js pages and API routes
-│   ├── components/    # React components
-│   └── lib/           # Business logic and database
-├── theme-evolution.db # SQLite database (auto-created)
-├── package.json       # Dependencies
-├── tsconfig.json      # TypeScript config
-└── next.config.ts     # Next.js config
-```
+See [Architecture](architecture.md) for detailed system design and file structure.
 
 ## Database Management
 
@@ -346,8 +328,6 @@ cp backup-20240101.db theme-evolution.db
 
 ## Production Deployment
 
-### Build for Production
-
 ```bash
 # Build optimized production bundle
 bun run build
@@ -356,38 +336,4 @@ bun run build
 bun start
 ```
 
-### Environment Variables
-
-Set required environment variables:
-```bash
-NODE_ENV=production
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-```
-
-### Considerations
-
-- Use PostgreSQL instead of SQLite for production
-- Set up proper logging and monitoring
-- Configure CORS for API endpoints
-- Use environment-specific configs
-- Set up automated backups
-- Consider using managed LLM services
-
-## Next Steps
-
-Once setup is complete:
-
-1. Read the [Usage Guide](usage.md) to learn how to use the system
-2. Explore the [Architecture](architecture.md) to understand the design
-3. Check the [Database Schema](database_schema.md) for data structure
-4. Review the [Project Proposal](project_proposal.md) for project goals
-
-## Support
-
-If you encounter issues:
-1. Check this troubleshooting section
-2. Review error messages in terminal
-3. Check browser console for frontend errors
-4. Verify all prerequisites are installed
-5. Ensure Ollama is running and models are downloaded
+See [Architecture](architecture.md) for detailed deployment considerations.

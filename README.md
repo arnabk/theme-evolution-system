@@ -34,7 +34,6 @@ bun dev
 - **[Usage Guide](docs/usage.md)** - How to use the system
 - **[Architecture](docs/architecture.md)** - System design and components  
 - **[Database Schema](docs/database_schema.md)** - TypeORM entities and auto-sync
-- **[Testing Guide](docs/testing.md)** - Testing strategies
 - **[Project Proposal](docs/project_proposal.md)** - Original project overview
 - **[Progress Report](docs/progress_report.md)** - Implementation status
 

@@ -119,75 +119,168 @@ export class LLMClient {
   }
 
   async generateQuestion(): Promise<string> {
+    // More diverse, provocative topics
     const topics = [
-      "workplace challenges", "technology adoption", "productivity", 
-      "team collaboration", "career development", "work-life balance",
-      "AI and automation", "data privacy", "remote work", "digital transformation",
-      "employee wellbeing", "innovation", "change management", "sustainability"
+      "ethical implications of AI in hiring decisions",
+      "four-day work week and productivity myths",
+      "digital nomad lifestyle and organizational culture",
+      "Gen Z expectations vs traditional workplace norms",
+      "impact of ChatGPT on creative industries",
+      "quiet quitting vs work-life boundaries",
+      "cryptocurrency compensation and financial wellbeing",
+      "metaverse meetings and virtual collaboration fatigue",
+      "surveillance capitalism in employee monitoring",
+      "neurodiversity in tech workplace design",
+      "climate anxiety and career choices",
+      "side hustles and corporate loyalty",
+      "automation anxiety and job security",
+      "social media influencers as legitimate careers",
+      "remote work's impact on urban development",
+      "burnout culture in startup environments",
+      "AI pair programming and skill development",
+      "hybrid work's effect on career advancement",
+      "mental health days vs unlimited PTO",
+      "DEI initiatives and reverse discrimination concerns"
     ];
     
     const topic = topics[Math.floor(Math.random() * topics.length)];
     
-    const prompt = `Generate a single thoughtful, open-ended survey question about ${topic}. The question should encourage detailed responses and be relevant to modern workplace contexts. Only output the question itself, nothing else.`;
+    const prompt = `Generate ONE provocative, open-ended survey question about: ${topic}
+
+Requirements:
+- Make it thought-provoking and current (2024-2025 context)
+- Encourage diverse, passionate responses
+- No yes/no questions
+- Focus on personal experiences and opinions
+- Be specific, not generic
+
+Output ONLY the question, nothing else:`;
 
     const model = this.getDefaultModel();
     const response = await this.generate({
       model,
       prompt,
-      temperature: 0.8
+      temperature: 0.9  // Higher for creativity
     });
 
     return response.trim();
   }
 
   async generateResponse(question: string): Promise<string> {
-    const personas = [
-      'an enthusiastic early adopter who loves new technology',
-      'a skeptical veteran employee who prefers traditional methods',
-      'a middle manager concerned about team productivity',
-      'a junior employee excited about career growth',
-      'a remote worker focused on work-life balance',
-      'a team leader worried about collaboration challenges',
-      'an efficiency-focused individual who values automation',
-      'a cautious person concerned about job security',
-      'an innovative thinker who sees opportunities',
-      'a practical person focused on day-to-day operations',
-      'someone who values personal development',
-      'a budget-conscious employee thinking about costs',
-      'a technically-minded person interested in tools',
-      'someone prioritizing mental health and stress reduction',
-      'a collaborative team player focused on communication'
+    // EXPANDED persona categories for maximum diversity
+    const demographics = [
+      'a 22-year-old Gen Z fresh grad drowning in student debt',
+      'a 35-year-old millennial with two kids and no savings',
+      'a 50-year-old Gen X executive questioning everything',
+      'a 60-year-old boomer forced into "digital transformation"',
+      'a 28-year-old immigrant navigating cultural workplace differences',
+      'a single parent working three part-time jobs',
+      'a fresh PhD unable to find academic positions',
+      'a high school dropout who became a successful founder',
+      'a veteran transitioning to civilian work culture',
+      'a formerly incarcerated person facing employment barriers'
     ];
-    
-    const sentiments = [
-      'with optimism',
-      'with some concerns',
-      'with mixed feelings',
-      'with enthusiasm',
-      'with skepticism',
-      'with practical considerations',
-      'with a balanced perspective'
+
+    const workSituations = [
+      'just got laid off after 15 years at the same company',
+      'surviving in a toxic workplace they can\'t leave',
+      'thriving in a genuinely good company (rare!)',
+      'running a failing startup on fumes',
+      'working remotely from a country with no labor laws',
+      'making $200K but feeling completely empty inside',
+      'earning minimum wage with a master\'s degree',
+      'freelancing and terrified of the next paycheck',
+      'just promoted to a job they hate',
+      'secretly job searching while pretending to be engaged'
     ];
-    
-    const lengths = [
-      'in 1-2 sentences',
-      'in 2-3 sentences',
-      'in 1 brief sentence',
-      'briefly in 2 sentences'
+
+    const perspectives = [
+      'deeply cynical and jaded from years of corporate BS',
+      'naively optimistic and still believes in "culture"',
+      'radically anti-capitalist but trapped in the system',
+      'fiercely pro-business and tired of "snowflakes"',
+      'spiritual/philosophical about work\'s meaning',
+      'purely transactional about employment',
+      'obsessed with productivity optimization',
+      'anti-hustle culture warrior',
+      'nostalgic for "the way things used to be"',
+      'excited about AI replacing everything',
+      'terrified AI will make them obsolete',
+      'believes unions are the only answer',
+      'thinks individual negotiation beats collective action'
     ];
-    
-    const persona = personas[Math.floor(Math.random() * personas.length)];
-    const sentiment = sentiments[Math.floor(Math.random() * sentiments.length)];
-    const lengthInstruction = lengths[Math.floor(Math.random() * lengths.length)];
-    
-    const prompt = `You are ${persona}. Answer this survey question ${sentiment}, ${lengthInstruction}:\n\n"${question}"\n\nProvide a genuine, authentic response that reflects your perspective:`;
+
+    const struggles = [
+      'with severe anxiety that makes meetings torture',
+      'with ADHD in an open-plan office nightmare',
+      'with chronic fatigue that makes 9-5 impossible',
+      'with caregiver burnout for aging parents',
+      'with addiction recovery while maintaining appearances',
+      'with grief after losing a loved one',
+      'with financial desperation after divorce',
+      'with visa status anxiety affecting every decision',
+      'with discrimination they can\'t prove',
+      'with perfectionism that makes everything take 10x longer'
+    ];
+
+    const tones = [
+      'ranting with barely contained rage',
+      'with dark humor hiding real pain',
+      'with vulnerable honesty that surprises even them',
+      'with cold, analytical detachment',
+      'with infectious enthusiasm',
+      'with world-weary wisdom',
+      'with provocative contrarianism',
+      'with genuine confusion and questions',
+      'with resigned acceptance',
+      'with revolutionary fervor',
+      'with quiet desperation',
+      'with surprising gratitude'
+    ];
+
+    const styles = [
+      'Share a specific story that happened last week',
+      'Use numbers and data to back up your point',
+      'Be brutally honest, even if it\'s uncomfortable',
+      'Challenge the premise of the question',
+      'Offer a completely unexpected perspective',
+      'Connect this to bigger systemic issues',
+      'Make it personal and emotional',
+      'Be practical and solution-focused',
+      'Express what others are afraid to say',
+      'Share what you\'ve never told anyone at work'
+    ];
+
+    // Randomly combine elements for unique perspectives
+    const demo = demographics[Math.floor(Math.random() * demographics.length)];
+    const situation = workSituations[Math.floor(Math.random() * workSituations.length)];
+    const perspective = perspectives[Math.floor(Math.random() * perspectives.length)];
+    const struggle = struggles[Math.floor(Math.random() * struggles.length)];
+    const tone = tones[Math.floor(Math.random() * tones.length)];
+    const style = styles[Math.floor(Math.random() * styles.length)];
+
+    // Randomly decide which elements to include (2-4 elements)
+    const elements = [demo, situation, perspective, struggle];
+    const shuffled = elements.sort(() => Math.random() - 0.5);
+    const numElements = 2 + Math.floor(Math.random() * 3); // 2-4 elements
+    const selectedElements = shuffled.slice(0, numElements);
+
+    const prompt = `You are ${selectedElements.join(', who is also ')}.
+
+Answer this survey question ${tone}:
+"${question}"
+
+${style}. 
+
+Write 1-3 authentic sentences. Be DIFFERENT from typical corporate responses. No buzzwords. Real human voice:`;
 
     const model = this.getDefaultModel();
     const response = await this.generate({
       model,
       prompt,
-      temperature: 0.95,
-      top_p: 0.9
+      temperature: 1.2,  // Even higher for maximum diversity
+      top_p: 0.98,       // Near-maximum randomness
+      top_k: 100         // Very wide sampling
     });
 
     return response.trim();

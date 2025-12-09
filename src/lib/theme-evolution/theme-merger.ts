@@ -1,102 +1,174 @@
 /**
- * Theme Merger - Consolidate similar themes based on keyword overlap
+ * Theme Merger
+ * Handles merging new themes with existing themes
  */
 
-export interface ThemeWithKeywords {
+import { llm } from '@/lib/llm';
+import { Theme, ThemePhrase } from '@/lib/entities/Theme';
+import { getErrorMessage } from '@/lib/types';
+import { getModel } from './utils';
+
+export interface ThemeData {
   name: string;
   description: string;
-  keywords: string;
-  keywordArray: string[];
-  isExisting?: boolean;
-  id?: number;
-  [key: string]: any;
+  phrases: ThemePhrase[];
+  response_count: number;
 }
 
-export function calculateKeywordOverlap(
-  keywords1: string[],
-  keywords2: string[]
-): number {
-  if (keywords1.length === 0 || keywords2.length === 0) return 0;
-  
-  const set1 = new Set(keywords1.map(k => k.toLowerCase()));
-  const set2 = new Set(keywords2.map(k => k.toLowerCase()));
-  
-  const intersection = new Set([...set1].filter(k => set2.has(k)));
-  const smaller = Math.min(set1.size, set2.size);
-  
-  return smaller > 0 ? (intersection.size / smaller) * 100 : 0;
+export interface MergeResult {
+  updatedThemes: Array<{ id: number; theme: ThemeData }>;  // Existing themes to update
+  newThemes: ThemeData[];  // New themes to add
 }
 
-export function mergeThemesWithOverlap(
-  themes: ThemeWithKeywords[],
-  overlapThreshold: number = 50
-): ThemeWithKeywords[] {
-  let consolidatedThemes = [...themes];
-  let consolidationHappened = true;
-  
-  while (consolidationHappened) {
-    consolidationHappened = false;
-    
-    for (let i = 0; i < consolidatedThemes.length; i++) {
-      for (let j = i + 1; j < consolidatedThemes.length; j++) {
-        const overlapPct = calculateKeywordOverlap(
-          consolidatedThemes[i].keywordArray,
-          consolidatedThemes[j].keywordArray
-        );
-        
-        if (overlapPct > overlapThreshold) {
-          console.log(`🔄 Consolidating: "${consolidatedThemes[i].name}" + "${consolidatedThemes[j].name}" (${overlapPct.toFixed(0)}% overlap)`);
-          
-          // Merge j into i (prefer keeping existing theme)
-          const combinedKeywords = [
-            ...new Set([
-              ...consolidatedThemes[i].keywordArray,
-              ...consolidatedThemes[j].keywordArray
-            ])
-          ];
-          
-          consolidatedThemes[i] = {
-            ...consolidatedThemes[i],
-            keywordArray: combinedKeywords,
-            keywords: combinedKeywords.join(', '),
-            description: consolidatedThemes[i].isExisting 
-              ? consolidatedThemes[i].description 
-              : `${consolidatedThemes[i].description} ${consolidatedThemes[j].description}`.trim()
-          };
-          
-          consolidatedThemes.splice(j, 1);
-          consolidationHappened = true;
-          break;
-        }
-      }
-      if (consolidationHappened) break;
+/**
+ * Use LLM to determine if two themes represent the EXACT SAME insight
+ * Returns a similarity score (0-100)
+ */
+async function getThemeSimilarityScore(
+  theme1: { name: string; description: string; phrases: ThemePhrase[] },
+  theme2: { name: string; description: string; phrases: ThemePhrase[] }
+): Promise<number> {
+  const prompt = `Rate the similarity between these two themes from 0-100.
+
+Theme A: "${theme1.name}"
+- ${theme1.description}
+- Phrases: ${theme1.phrases.slice(0, 3).map(p => `"${p.text}"`).join(', ')}
+
+Theme B: "${theme2.name}"
+- ${theme2.description}
+- Phrases: ${theme2.phrases.slice(0, 3).map(p => `"${p.text}"`).join(', ')}
+
+Scoring guide:
+- 90-100: IDENTICAL insight, just worded differently (e.g., "need for flexibility" vs "wanting flexible work")
+- 70-89: Very similar core message, minor differences
+- 50-69: Related topics but different specific insights
+- 30-49: Some overlap but distinct themes
+- 0-29: Completely different topics
+
+Respond with ONLY a number (0-100):`;
+
+  try {
+    const response = await llm.generate({
+      model: getModel(),
+      prompt,
+      temperature: 0.1
+    });
+
+    const match = response.match(/\d+/);
+    const score = match ? parseInt(match[0]) : 0;
+    return Math.min(100, Math.max(0, score));
+  } catch (error) {
+    console.error('LLM similarity check failed:', getErrorMessage(error));
+    return 0;
+  }
+}
+
+// Minimum similarity score to merge themes (80% = very similar)
+const MERGE_THRESHOLD = 80;
+
+/**
+ * Merge phrases from two themes, removing duplicates
+ */
+function mergePhrases(phrases1: ThemePhrase[], phrases2: ThemePhrase[]): ThemePhrase[] {
+  const seen = new Set<string>();
+  const merged: ThemePhrase[] = [];
+
+  for (const phrase of [...phrases1, ...phrases2]) {
+    const key = phrase.text.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(phrase);
     }
   }
-  
-  return consolidatedThemes;
+
+  return merged;
 }
 
-export function deduplicateKeywords(themes: ThemeWithKeywords[]): ThemeWithKeywords[] {
-  const keywordToTheme = new Map<string, number>();
-  
-  return themes.map((theme, index) => {
-    const uniqueKeywords: string[] = [];
-    
-    for (const keyword of theme.keywordArray) {
-      const keyLower = keyword.toLowerCase();
-      if (!keywordToTheme.has(keyLower)) {
-        keywordToTheme.set(keyLower, index);
-        uniqueKeywords.push(keyword);
-      } else if (keywordToTheme.get(keyLower) === index) {
-        uniqueKeywords.push(keyword);
+/**
+ * Main function: Merge new themes with existing themes
+ * Only merges if similarity >= 80% (very similar)
+ */
+export async function mergeWithExistingThemes(
+  existingThemes: Theme[],
+  newThemes: ThemeData[],
+  onProgress?: (message: string) => void
+): Promise<MergeResult> {
+  const result: MergeResult = {
+    updatedThemes: [],
+    newThemes: []
+  };
+
+  // If no existing themes, all are new
+  if (existingThemes.length === 0) {
+    console.log(`📝 No existing themes - all ${newThemes.length} are new`);
+    result.newThemes = [...newThemes];
+    return result;
+  }
+
+  console.log(`\n🔍 Comparing ${newThemes.length} new themes against ${existingThemes.length} existing themes...`);
+  console.log(`   Merge threshold: ${MERGE_THRESHOLD}% similarity\n`);
+
+  // Track which existing themes have been matched
+  const matchedExistingIds = new Set<number>();
+
+  for (const newTheme of newThemes) {
+    let bestMatch: { theme: Theme; score: number } | null = null;
+
+    // Compare with existing themes using LLM similarity scoring
+    for (const existingTheme of existingThemes) {
+      if (matchedExistingIds.has(existingTheme.id)) continue;
+
+      const existingPhrases = existingTheme.getPhrases();
+      
+      onProgress?.(`Checking: "${newTheme.name.substring(0, 25)}..." vs "${existingTheme.name.substring(0, 25)}..."`);
+      
+      // Get similarity score from LLM (0-100)
+      const similarityScore = await getThemeSimilarityScore(
+        { name: existingTheme.name, description: existingTheme.description, phrases: existingPhrases },
+        newTheme
+      );
+
+      console.log(`  📊 "${newTheme.name.substring(0, 30)}..." vs "${existingTheme.name.substring(0, 30)}..." = ${similarityScore}%`);
+
+      // Only merge if similarity >= 80%
+      if (similarityScore >= MERGE_THRESHOLD) {
+        if (!bestMatch || similarityScore > bestMatch.score) {
+          bestMatch = { theme: existingTheme, score: similarityScore };
+        }
       }
     }
-    
-    return {
-      ...theme,
-      keywords: uniqueKeywords.join(', '),
-      keywordArray: uniqueKeywords
-    };
-  }).filter(theme => theme.keywordArray.length > 0); // Remove themes with no unique keywords
+
+    if (bestMatch && bestMatch.score >= MERGE_THRESHOLD) {
+      // Merge with existing theme (similarity >= 80%)
+      matchedExistingIds.add(bestMatch.theme.id);
+      
+      const existingPhrases = bestMatch.theme.getPhrases();
+      const mergedPhrases = mergePhrases(existingPhrases, newTheme.phrases);
+      const newPhrasesAdded = mergedPhrases.length - existingPhrases.length;
+      
+      console.log(`\n🔄 MERGING (${bestMatch.score}% similar):`);
+      console.log(`   "${newTheme.name}" → "${bestMatch.theme.name}"`);
+      console.log(`   📊 Phrases: ${existingPhrases.length} + ${newTheme.phrases.length} → ${mergedPhrases.length} (${newPhrasesAdded} new)`);
+      
+      result.updatedThemes.push({
+        id: bestMatch.theme.id,
+        theme: {
+          name: bestMatch.theme.name,
+          description: bestMatch.theme.description,
+          phrases: mergedPhrases,
+          response_count: bestMatch.theme.response_count + newTheme.response_count
+        }
+      });
+    } else {
+      // Add as NEW theme (no match above 80% threshold)
+      const highestScore = bestMatch ? bestMatch.score : 0;
+      console.log(`\n➕ NEW THEME (highest match was ${highestScore}%, below ${MERGE_THRESHOLD}% threshold):`);
+      console.log(`   "${newTheme.name}"`);
+      console.log(`   📊 ${newTheme.phrases.length} phrases, ${newTheme.response_count} responses`);
+      result.newThemes.push(newTheme);
+    }
+  }
+
+  return result;
 }
 

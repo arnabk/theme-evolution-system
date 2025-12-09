@@ -74,10 +74,10 @@ The Theme Evolution System processes survey responses in batches, maintains them
 
 **Location**: `src/app/page.tsx`, `src/components/`
 
-Main application interface with three tabs:
-- **Dashboard**: Overview statistics and metrics
+Main application interface with two tabs:
 - **Themes**: Theme list with assigned responses
 - **Responses**: All responses with theme assignments
+- **Statistics**: Real-time metrics in sidebar
 
 **Key Files**:
 - `page.tsx` - Main application page (~165 lines)
@@ -221,24 +221,7 @@ See [Database Schema](database_schema.md) for detailed schema.
 
 ## Configuration
 
-### Environment Variables
-
-```bash
-# LLM Provider (default: ollama)
-LLM_PROVIDER=ollama  # or openai, gemini
-
-# Ollama Configuration
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2:3b
-
-# OpenAI (optional)
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
-
-# Gemini (optional)
-GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-1.5-flash
-```
+See [Setup Guide](setup.md) for detailed environment configuration and LLM provider setup.
 
 ## Performance Considerations
 

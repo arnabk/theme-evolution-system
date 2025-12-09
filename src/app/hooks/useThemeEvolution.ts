@@ -2,7 +2,8 @@
  * Custom hook for theme evolution operations
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { getErrorMessage } from '@/lib/types';
 
 export interface Stats {
   total_responses: number;
@@ -75,7 +76,7 @@ export function useThemeEvolution(sessionId: string) {
         await loadStats();
         setRefreshKey(prev => prev + 1);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to generate question:', error);
     } finally {
       setIsGeneratingQuestion(false);
@@ -114,13 +115,44 @@ export function useThemeEvolution(sessionId: string) {
         await loadStats();
         setRefreshKey(prev => prev + 1);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to generate responses:', error);
     } finally {
       setIsGeneratingResponses(false);
       setResponseProgress({ current: 0, total: 0 });
     }
   };
+
+  const exportData = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/export?sessionId=${sessionId}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        // Create filename with timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `theme-evolution-export-${timestamp}.json`;
+        
+        // Create blob and download
+        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('✅ Exported data successfully');
+        return true;
+      }
+      return false;
+    } catch (error: unknown) {
+      console.error('Export failed:', error);
+      return false;
+    }
+  }, [sessionId]);
 
   const processThemes = async () => {
     setIsProcessingThemes(true);
@@ -171,7 +203,7 @@ export function useThemeEvolution(sessionId: string) {
           }
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to process themes:', error);
       setThemeProgress({ message: 'Failed to process themes', progress: 0 });
     } finally {
@@ -195,6 +227,7 @@ export function useThemeEvolution(sessionId: string) {
     generateQuestion,
     generateResponses,
     processThemes,
+    exportData,
   };
 }
 

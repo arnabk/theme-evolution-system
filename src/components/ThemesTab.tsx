@@ -7,18 +7,23 @@ interface Theme {
   id: number;
   name: string;
   description: string;
-  confidence: number;
+  phrases?: string;  // JSON string of ThemePhrase[]
+  response_count: number;
   created_at: string;
   updated_at: string;
-  contributing_responses?: number;
-  keywords?: string[];
+}
+
+interface Highlight {
+  text: string;
+  start: number;
+  end: number;
 }
 
 interface ThemeResponse {
   id: number;
   text: string;
   keywords: string[];
-  highlights: any[];
+  highlights: Highlight[];
   confidence: number;
 }
 

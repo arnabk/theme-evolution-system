@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../lib/database';
+import { db } from '@/lib/database';
+import { getErrorMessage } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
@@ -15,10 +16,10 @@ export async function POST(request: Request) {
       message: 'Session data cleared',
       timestamp: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Clear session data error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

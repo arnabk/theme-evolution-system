@@ -1,5 +1,14 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
+/**
+ * Phrase structure stored in the theme
+ * Each phrase represents a semantic span extracted from responses
+ */
+export interface ThemePhrase {
+  text: string;           // The exact phrase
+  class: string;          // Semantic class: user_goal, pain_point, emotion, etc.
+}
+
 @Entity('themes')
 export class Theme {
   @PrimaryGeneratedColumn()
@@ -14,19 +23,25 @@ export class Theme {
   @Column({ type: 'text' })
   description!: string;
 
-  @Column({ type: 'real' })
-  confidence!: number;
-
   @Column({ type: 'text', nullable: true })
-  centroid_embedding!: string | null;
+  phrases!: string | null;  // JSON array of ThemePhrase objects
 
-  @Column({ type: 'boolean', default: true })
-  is_active!: boolean;
+  @Column({ type: 'integer', default: 0 })
+  response_count!: number;  // Cached count of matching responses
 
   @CreateDateColumn()
   created_at!: Date;
 
   @UpdateDateColumn()
   updated_at!: Date;
-}
 
+  // Helper to get parsed phrases
+  getPhrases(): ThemePhrase[] {
+    if (!this.phrases) return [];
+    try {
+      return JSON.parse(this.phrases);
+    } catch {
+      return [];
+    }
+  }
+}

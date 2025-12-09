@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { ollama } from '../../../../lib/ollama';
-import { db } from '../../../../lib/database';
+import { llm } from '@/lib/llm';
+import { db } from '@/lib/database';
+import { getErrorMessage } from '@/lib/types';
 
 export async function POST(request: Request) {
   try {
@@ -35,10 +36,10 @@ export async function POST(request: Request) {
       batchId,
       timestamp: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Response generation error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

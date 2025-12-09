@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../lib/database';
+import { db } from '@/lib/database';
+import { getErrorMessage } from '@/lib/types';
 
 export async function GET(request: Request) {
   try {
@@ -16,10 +17,10 @@ export async function GET(request: Request) {
       count: themes.length,
       timestamp: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get themes error:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }

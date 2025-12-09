@@ -17,6 +17,9 @@ export class ResponseEntity {
   @Column({ type: 'text' })
   question!: string;
 
+  @Column({ type: 'boolean', default: false })
+  processed!: boolean;  // Whether this response has been used in theme generation
+
   @CreateDateColumn()
   created_at!: Date;
 }

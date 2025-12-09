@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { StatsCard } from '../components/StatsCard';
-import { ActionButton } from '../components/ActionButton';
-import { QuestionDisplay } from '../components/QuestionDisplay';
-import { ThemesTab } from '../components/ThemesTab';
-import { ResponsesTab } from '../components/ResponsesTab';
-import { getSessionId } from '../lib/session';
+import { StatsCard } from '@/components/StatsCard';
+import { ActionButton } from '@/components/ActionButton';
+import { QuestionDisplay } from '@/components/QuestionDisplay';
+import { ThemesTab } from '@/components/ThemesTab';
+import { ResponsesTab } from '@/components/ResponsesTab';
+import { getSessionId } from '@/lib/session';
 import { useThemeEvolution } from './hooks/useThemeEvolution';
 
 export default function Home() {
@@ -111,6 +111,17 @@ export default function Home() {
                 progress={evolution.isProcessingThemes ? evolution.themeProgress.progress : undefined}
                 helpText={!hasUnprocessedResponses ? "Generate responses first" : anyOperationActive && !evolution.isProcessingThemes ? "Operation in progress" : undefined}
                 variant="accent"
+              />
+              
+              <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+              
+              <ActionButton
+                label="📥 Export Data"
+                onClick={evolution.exportData}
+                disabled={anyOperationActive || evolution.stats.total_responses === 0}
+                loading={false}
+                helpText={evolution.stats.total_responses === 0 ? "No data to export" : "Download question & responses"}
+                variant="secondary"
               />
             </div>
 

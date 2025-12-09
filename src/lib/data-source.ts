@@ -2,7 +2,6 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { Theme } from './entities/Theme';
 import { Response } from './entities/Response';
-import { ThemeAssignment } from './entities/ThemeAssignment';
 import { Session } from './entities/Session';
 
 // Singleton instance
@@ -38,7 +37,7 @@ async function initializeDataSource(): Promise<DataSource> {
     database: 'theme-evolution.db',
     synchronize: true,
     logging: false,
-    entities: [Theme, Response, ThemeAssignment, Session],
+    entities: [Theme, Response, Session],
     // Disable automatic transactions to avoid nested transaction issues
     maxQueryExecutionTime: 5000,
   });

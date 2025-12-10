@@ -69,14 +69,15 @@ Generate and process multiple batches to watch themes evolve:
 ```
 
 ### Theme Merging
-- Automatically detects similar themes (>50% keyword overlap)
-- Merges themes and combines descriptions
-- Updates all response assignments
+- Automatically detects similar themes using LLM-based semantic comparison
+- Merges themes if similarity ≥80% (encourages new theme generation)
+- Combines phrase lists and updates response counts
 
-### Keyword Highlighting
-- Extracts n-grams (1-3 word phrases) from responses
-- Calculates similarity to themes
-- Highlights contributing keywords in UI
+### Semantic Span Highlighting
+- Extracts semantic spans (user goals, pain points, emotions, etc.) from responses
+- Uses LLM to identify meaningful phrases with semantic classes
+- Highlights exact phrases in responses with color-coded classes
+- Shows which phrases contributed to each theme assignment
 
 ## API Endpoints
 
@@ -153,12 +154,12 @@ while (true) {
 **Theme processing errors**
 - Check browser console
 - Verify responses exist
-- Ensure Ollama is responding
+- Ensure LLM provider is configured (OpenAI/Gemini API key or Ollama running)
 
 **Data not showing**
 - Refresh page
 - Check network tab for API errors
-- Verify database file exists: `ls theme-evolution.db`
+- Verify database file exists: `ls ./data/theme-evolution.db`
 
 ## Related Documentation
 

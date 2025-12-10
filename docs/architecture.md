@@ -12,7 +12,7 @@ The Theme Evolution System processes survey responses in batches, maintains them
 - **Framework**: Next.js 15 with App Router
 - **Language**: TypeScript (100% type-safe)
 - **Database**: SQLite with TypeORM (auto-schema sync)
-- **LLM**: Ollama (local) with multi-provider support (OpenAI, Gemini)
+- **LLM**: Multi-provider support (OpenAI, Gemini for production; Ollama for local development)
 - **Frontend**: React 19 with Server Components
 - **Styling**: Tailwind CSS
 
@@ -61,13 +61,12 @@ The Theme Evolution System processes survey responses in batches, maintains them
 │                           ↓                                      │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │                   Data Layer                                │ │
-│  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │ │
-│  │  │  SQLite    │  │  Ollama    │  │  TypeORM Entities  │  │ │
-│  │  │    DB      │  │  (Local)   │  │  • Theme           │  │ │
-│  │  │            │  │            │  │  • Response        │  │ │
-│  │  │            │  │            │  │                    │  │ │
-│  │  │            │  │            │  │  • Session         │  │ │
-│  │  └────────────┘  └────────────┘  └────────────────────┘  │ │
+│  │  ┌────────────┐  ┌────────────────────┐                    │ │
+│  │  │  SQLite    │  │  TypeORM Entities  │                    │ │
+│  │  │    DB      │  │  • Theme           │                    │ │
+│  │  │            │  │  • Response        │                    │ │
+│  │  │            │  │  • Session         │                    │ │
+│  │  └────────────┘  └────────────────────┘                    │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -116,9 +115,9 @@ RESTful API endpoints for all operations:
 #### Theme Evolution Module (`theme-evolution/`)
 
 - **`span-extractor.ts`** (~192 lines)
-  - Extracts semantic spans (goals, pain points, emotions, etc.) using direct LLM calls
+  - Extracts semantic spans (user goals, pain points, emotions, requests, etc.) using direct LLM calls
   - Validates extracted phrases exist in original text
-  - Returns spans with character positions
+  - Returns spans with character positions and semantic classes
 
 - **`span-clusterer.ts`** (~210 lines)
   - Clusters spans semantically into themes using LLM
@@ -139,15 +138,15 @@ RESTful API endpoints for all operations:
 
 - **`theme-merger.ts`** (~175 lines)
   - Merges new themes with existing themes across batches
-  - Uses 80% similarity threshold for merging
-  - Updates phrase lists and response counts
+  - Uses LLM-based semantic comparison with 80% similarity threshold
+  - Updates phrase lists (removes duplicates) and response counts
 
 #### LLM Client (`llm.ts`)
 
 Multi-provider LLM client supporting:
-- **Ollama** (default, local, free)
-- **OpenAI** (cloud, API key required)
+- **OpenAI** (default for production, cloud, API key required)
 - **Gemini** (cloud, API key required)
+- **Ollama** (for local development, optional)
 
 Key methods:
 - `generate()` - Generate text with specified model
@@ -158,9 +157,9 @@ Key methods:
 
 TypeORM-based database operations:
 - Session management
-- Theme CRUD operations
-- Response storage
-- Assignment tracking
+- Theme CRUD operations (with phrase storage)
+- Response storage (with processed flag)
+- Dynamic phrase matching for response-theme associations
 - Statistics queries
 
 ### 4. Data Layer
@@ -174,7 +173,9 @@ TypeORM-based database operations:
 #### SQLite Database
 
 - **Auto-sync schema** - TypeORM creates tables automatically
-- **File-based** - `theme-evolution.db` in project root
+- **File-based** - `theme-evolution.db` location configurable via `DATA_DIR` env var
+- **Default location** - `./data/theme-evolution.db` (or project root if `DATA_DIR` not set)
+- **Docker location** - `/app/data/theme-evolution.db` (via `DATA_DIR` volume)
 - **No migrations** - Schema syncs on startup
 - **Lightweight** - Perfect for development and testing
 
@@ -207,17 +208,25 @@ User clicks "Generate Responses"
 ```
 User clicks "Extract Themes" 
   → /api/themes/process 
-  → Load unprocessed responses
+  → Load unprocessed responses (processed: false)
   → Extract semantic spans (span-extractor.ts)
+    • Uses LLM to extract phrases with semantic classes
+    • Validates phrases exist in original text
+    • Returns spans with character positions
   → Cluster spans into themes (span-clusterer.ts)
+    • Uses LLM to group semantically similar spans
+    • Generates theme names and descriptions
   → Build theme objects (theme-builder.ts)
+    • Associates spans with themes
   → Merge similar themes within batch (batch-theme-merger.ts)
+    • Uses LLM to identify duplicate themes
   → Deduplicate spans (theme-deduplicator.ts)
-  → Merge with existing themes (theme-merger.ts) 
-  → ThemeExtractor.extractThemes() 
-  → ThemeMerger.mergeThemes() 
-  → ResponseAssigner.assignResponses() 
-  → Save to database 
+    • Ensures each span belongs to only one theme
+  → Merge with existing themes (theme-merger.ts)
+    • Compares new themes with existing (80% similarity threshold)
+    • Merges phrases and updates response counts
+  → Save themes to database (with phrases JSON)
+  → Mark responses as processed (processed: true)
   → Return results
 ```
 
@@ -233,10 +242,11 @@ Batch 3 → Continue evolution → Maintain consistency
 
 ### Core Tables
 
-1. **themes** - Extracted themes with embeddings
-2. **responses** - Survey responses
-3. **theme_assignments** - Response-theme mappings
-4. **sessions** - Session state
+1. **themes** - Extracted themes with semantic phrases (JSON)
+2. **responses** - Survey responses with processed flag
+3. **sessions** - Session state
+
+**Note:** Response-to-theme matching is dynamic. Themes store semantic phrases, and responses are matched by searching for those phrases at query time. No separate assignments table exists.
 
 See [Database Schema](database_schema.md) for detailed schema.
 
@@ -260,7 +270,8 @@ See [Setup Guide](setup.md) for detailed environment configuration and LLM provi
 
 ### 3. LLM Optimization
 
-- Local Ollama for zero-cost processing
+- Cloud providers (OpenAI/Gemini) for production
+- Local Ollama for development (optional)
 - Configurable models per use case
 - Multi-provider support for flexibility
 
@@ -289,9 +300,10 @@ See [Setup Guide](setup.md) for detailed environment configuration and LLM provi
 
 ### 1. Data Privacy
 
-- Local processing with Ollama (default)
-- No external API calls required
-- Data stays on your machine
+- Cloud LLM providers (OpenAI/Gemini) for production
+- Local Ollama available for development (optional)
+- API keys stored securely in environment variables
+- Data stored locally in SQLite database
 
 ### 2. API Security
 

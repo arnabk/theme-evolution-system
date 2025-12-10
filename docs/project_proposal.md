@@ -51,9 +51,9 @@ A scalable theme extraction and evolution system that:
 
 **Core Technical Solution:**
 - **Intelligent Batching**: Process responses in optimal chunks that fit LLM context windows
-- **Keyword-Based Similarity**: Use n-gram extraction (1-3 word phrases) to match responses to themes
+- **Semantic Span Extraction**: Use LLM to extract meaningful phrases (user goals, pain points, emotions) with semantic classes
 - **Incremental Processing**: Maintain theme state across batches using database persistence
-- **Automatic Merging**: Merge themes with >50% keyword overlap
+- **Automatic Merging**: Merge themes using LLM-based semantic comparison (80% similarity threshold)
 
 **Technology Stack:**
 - **Runtime**: Bun (fast JavaScript runtime)
@@ -63,18 +63,18 @@ A scalable theme extraction and evolution system that:
 - **Frontend**: React 19 with modern UI components
 
 **Architecture Components:**
-- **API Routes**: Next.js API routes for all operations (~30-50 lines each)
-- **Theme Extractor**: LLM integration for theme generation using n-gram keyword analysis
-- **Theme Merger**: Merge similar themes based on keyword overlap
-- **Response Assigner**: Assign responses to themes with confidence scores
-- **Database Client**: TypeORM operations for all data persistence
-- **React UI**: Modern interface with real-time updates
+- **API Routes**: Next.js API routes for all operations
+- **Span Extractor**: LLM integration for semantic span extraction (goals, pain points, emotions)
+- **Span Clusterer**: LLM-based clustering of spans into themes
+- **Theme Merger**: Merge similar themes using LLM semantic comparison
+- **Database Client**: TypeORM operations with dynamic phrase matching
+- **React UI**: Modern interface with infinite scroll and real-time updates
 
 **Key Technical Innovations:**
 1. **Intelligent Batching**: Process large datasets in optimal chunks that fit LLM context windows
-2. **Keyword-Based Similarity**: Use n-gram extraction for efficient theme matching and merging
-3. **Theme Evolution**: Maintain and update themes across batches with automatic merging
-4. **Scalable Processing**: Handle datasets of any size through intelligent chunking
+2. **Semantic Span Extraction**: Use LLM to extract meaningful phrases with semantic classes for theme generation
+3. **Theme Evolution**: Maintain and update themes across batches with LLM-based semantic merging
+4. **Scalable Processing**: Handle datasets of any size through intelligent chunking and dynamic phrase matching
 
 ### 5. How do you plan to evaluate your tool?
 

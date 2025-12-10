@@ -77,13 +77,14 @@ docker run -p 3000:3000 \
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LLM_PROVIDER` | LLM provider: `ollama`, `openai`, or `gemini` | `ollama` |
-| `OLLAMA_BASE_URL` | Ollama API URL | `http://ollama:11434` |
+| `LLM_PROVIDER` | LLM provider: `openai`, `gemini`, or `ollama` (for external) | `openai` |
+| `OLLAMA_BASE_URL` | Ollama API URL (only if using external Ollama) | - |
 | `OLLAMA_MODEL` | Ollama model name | `llama3.2:3b` |
 | `OPENAI_API_KEY` | OpenAI API key | - |
 | `OPENAI_MODEL` | OpenAI model name | `gpt-4o-mini` |
 | `GEMINI_API_KEY` | Gemini API key | - |
 | `GEMINI_MODEL` | Gemini model name | `gemini-1.5-flash` |
+| `DATA_DIR` | Directory for SQLite database | `/app/data` |
 
 ## Data Persistence
 

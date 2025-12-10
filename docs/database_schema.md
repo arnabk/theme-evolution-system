@@ -6,7 +6,9 @@ This document describes the database schema for the Theme Evolution System.
 
 The system uses **SQLite** with **TypeORM** for database operations. The schema is automatically created and synchronized on application startup - no manual migrations required.
 
-**Database File**: `theme-evolution.db` (SQLite file in project root)
+**Database File**: `theme-evolution.db` (SQLite file location depends on environment)
+- **Development**: `./data/theme-evolution.db` (or project root if `DATA_DIR` not set)
+- **Docker**: `/app/data/theme-evolution.db` (set via `DATA_DIR` environment variable)
 
 ## TypeORM Entities
 
@@ -33,14 +35,11 @@ export class Theme {
   @Column({ type: 'text' })
   description: string;
 
-  @Column({ type: 'real' })
-  confidence: number;
-
   @Column({ type: 'text', nullable: true })
-  centroid_embedding: string | null;
+  phrases: string | null;  // JSON array of ThemePhrase objects
 
-  @Column({ type: 'boolean', default: true })
-  is_active: boolean;
+  @Column({ type: 'integer', default: 0 })
+  response_count: number;  // Cached count of matching responses
 
   @CreateDateColumn()
   created_at: Date;
@@ -55,9 +54,8 @@ export class Theme {
 - `session_id` - Session identifier for data isolation
 - `name` - Theme name (e.g., "Remote Work Challenges")
 - `description` - Detailed theme description
-- `confidence` - Confidence score (0.0 to 1.0)
-- `centroid_embedding` - JSON string of centroid embedding vector
-- `is_active` - Whether theme is currently active
+- `phrases` - JSON string of semantic phrases extracted from responses: `[{ text: string, class: string }]`
+- `response_count` - Cached count of responses matching this theme's phrases
 - `created_at` - Timestamp when theme was created
 - `updated_at` - Timestamp when theme was last updated
 
@@ -83,6 +81,9 @@ export class Response {
   @Column({ type: 'text' })
   question: string;
 
+  @Column({ type: 'boolean', default: false })
+  processed: boolean;  // Whether this response has been processed for themes
+
   @CreateDateColumn()
   created_at: Date;
 }
@@ -94,48 +95,10 @@ export class Response {
 - `response_text` - The actual response text
 - `batch_id` - Batch number this response belongs to
 - `question` - The survey question being answered
+- `processed` - Whether this response has been processed for theme extraction
 - `created_at` - Timestamp when response was created
 
-### 3. response_theme_assignments
-
-Maps responses to themes with confidence scores and highlighted keywords.
-
-```typescript
-@Entity('response_theme_assignments')
-export class ThemeAssignment {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ type: 'integer' })
-  response_id: number;
-
-  @Column({ type: 'integer' })
-  theme_id: number;
-
-  @Column({ type: 'real' })
-  confidence: number;
-
-  @Column({ type: 'text', nullable: true })
-  highlighted_keywords: string | null;
-
-  @Column({ type: 'text', nullable: true })
-  contributing_text: string | null;
-
-  @CreateDateColumn()
-  created_at: Date;
-}
-```
-
-**Fields:**
-- `id` - Auto-incrementing primary key
-- `response_id` - Foreign key to responses table
-- `theme_id` - Foreign key to themes table
-- `confidence` - Similarity score (0.0 to 1.0)
-- `highlighted_keywords` - JSON array: `[{ text: string, start: number, end: number }]`
-- `contributing_text` - The specific text that matched the theme
-- `created_at` - Timestamp when assignment was created
-
-### 4. sessions
+### 3. sessions
 
 Stores session state for multi-user support.
 
@@ -162,6 +125,9 @@ export class Session {
 - `created_at` - Timestamp when session was created
 - `updated_at` - Timestamp when session was last updated
 
+**Note:** Response-to-theme assignments are now dynamic. The system stores semantic phrases in the `themes.phrases` field and matches responses by searching for those phrases in the response text at query time. This eliminates the need for a separate `response_theme_assignments` table.
+
+
 ## Relationships
 
 ### Entity Relationship Diagram
@@ -169,17 +135,15 @@ export class Session {
 ```
 sessions (1) ←→ (M) responses
 sessions (1) ←→ (M) themes
-
-responses (1) ←→ (M) response_theme_assignments (M) ←→ (1) themes
 ```
 
 ### Key Relationships
 
 1. **Session → Responses**: One-to-many (session has many responses)
 2. **Session → Themes**: One-to-many (session has many themes)
-3. **Response → Theme**: Many-to-many through `response_theme_assignments`
-4. **Response → ThemeAssignment**: One-to-many
-5. **Theme → ThemeAssignment**: One-to-many
+3. **Response → Theme**: Many-to-many (dynamic matching via phrase search)
+
+**Note:** Response-to-theme matching is performed dynamically by searching for theme phrases within response text. No explicit foreign key relationship exists.
 
 ## Data Types
 
@@ -198,17 +162,16 @@ TypeORM automatically maps TypeScript types to SQLite types:
 
 ### JSON Fields
 
-Several fields store JSON as text strings:
+The `phrases` field stores JSON as a text string:
 
-- **`centroid_embedding`**: Array of numbers (embedding vector)
+- **`phrases`**: Array of semantic phrase objects
   ```json
-  "[0.1, 0.2, 0.3, ...]"
+  "[{\"text\": \"feels ignored by support\", \"class\": \"pain_point\"}, ...]"
   ```
-
-- **`highlighted_keywords`**: Array of keyword objects
-  ```json
-  "[{\"text\": \"remote\", \"start\": 0, \"end\": 6}, ...]"
-  ```
+  
+  Each phrase object contains:
+  - `text`: The exact phrase extracted from responses
+  - `class`: Semantic class (e.g., `user_goal`, `pain_point`, `emotion`, `request`, `concern`, `suggestion`, `insight`)
 
 ## Indexes
 
@@ -226,12 +189,15 @@ The database schema is automatically created/updated when the application starts
 
 ```typescript
 // src/lib/data-source.ts
+const dataDir = process.env.DATA_DIR || './data';
+const dbPath = `${dataDir}/theme-evolution.db`;
+
 const AppDataSource = new DataSource({
   type: 'sqlite',
-  database: 'theme-evolution.db',
+  database: dbPath,
   synchronize: true,  // Auto-sync schema
   logging: false,
-  entities: [Theme, Response, ThemeAssignment, Session]
+  entities: [Theme, Response, Session]
 });
 ```
 
@@ -258,22 +224,24 @@ const themes = await dataSource.getRepository(Theme).find({
 });
 ```
 
-**Get responses with theme assignments:**
+**Get responses matching a theme's phrases:**
 ```typescript
-const assignments = await dataSource.getRepository(ThemeAssignment)
-  .createQueryBuilder('assignment')
-  .leftJoinAndSelect('responses', 'r', 'r.id = assignment.response_id')
-  .leftJoinAndSelect('themes', 't', 't.id = assignment.theme_id')
-  .where('t.session_id = :sessionId', { sessionId })
-  .getMany();
+const theme = await themeRepo.findOne({ where: { id: themeId } });
+const phrases = theme.getPhrases(); // Parse JSON phrases
+
+// Dynamically search for phrases in responses
+const allResponses = await responseRepo.find({ where: { session_id } });
+const matchingResponses = allResponses.filter(response => 
+  phrases.some(phrase => response.response_text.includes(phrase.text))
+);
 ```
 
 **Count statistics:**
 ```typescript
 const stats = {
   totalResponses: await responseRepo.count({ where: { session_id } }),
-  totalThemes: await themeRepo.count({ where: { session_id, is_active: true } }),
-  totalAssignments: await assignmentRepo.count()
+  totalThemes: await themeRepo.count({ where: { session_id } }),
+  processedResponses: await responseRepo.count({ where: { session_id, processed: true } })
 };
 ```
 

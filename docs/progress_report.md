@@ -13,11 +13,11 @@ The main system is built and working. All the key pieces are in place:
 
 - **Database**: SQLite with TypeORM is set up and working. Schema auto-syncs on startup. I can store responses, themes, and assignments with type-safe operations.
 
-- **Theme Processing**: The full pipeline works - I can extract themes from responses using Ollama (Llama 3.2:3b), match responses to existing themes, detect when themes should merge (>50% keyword overlap), and assign responses with keyword highlighting.
+- **Theme Processing**: The full pipeline works - I can extract semantic spans from responses using LLM, cluster spans into themes, merge themes using LLM-based semantic comparison (80% threshold), and dynamically match responses to themes via phrase search.
 
 - **LLM Integration**: Using Ollama's local API for all LLM operations. Multi-provider support implemented (Ollama, OpenAI, Gemini) but defaults to local Ollama for zero-cost processing.
 
-- **Keyword Highlighting**: N-gram extraction (1-3 word phrases) and similarity-based keyword scoring is implemented. It finds which words/phrases contribute most to theme assignments.
+- **Semantic Span Highlighting**: LLM-based extraction of semantic spans (user goals, pain points, emotions, etc.) with exact phrase highlighting in responses. Each span has a semantic class and character positions for precise highlighting.
 
 - **UI**: Built a modern Next.js interface with React 19 that's actually usable. You can generate random questions, create 100 synthetic responses at a time, process batches, and view results with real-time updates. Added individual button states and non-blocking operations for better UX.
 
@@ -37,14 +37,16 @@ I'm using LLM-based synthetic data generation. The system uses diverse personas 
 
 ### What Works
 - Question generation with LLM
-- Batch response generation (100 at a time)
-- Theme extraction with n-gram analysis
-- Theme merging based on keyword overlap
-- Response-to-theme assignment with confidence scores
-- Keyword highlighting in responses
-- Database persistence with SQLite
-- Modern UI with real-time updates
+- Batch response generation (20 at a time)
+- Semantic span extraction from responses
+- LLM-based theme clustering and generation
+- Theme merging using semantic comparison (80% threshold)
+- Dynamic response-to-theme matching via phrase search
+- Semantic span highlighting in responses with color-coded classes
+- Database persistence with SQLite (phrases stored in themes table)
+- Modern UI with infinite scroll and real-time updates
 - Session-based data isolation
+- Export functionality for data download
 - All core features operational
 
 ---
@@ -106,16 +108,17 @@ Using SQLite instead of PostgreSQL + pgvector:
 
 ### Theme Quality
 Theme extraction quality depends on:
-- N-gram analysis for keyword extraction
+- LLM-based semantic span extraction
+- Semantic clustering accuracy
 - Similarity thresholds for merging
 - LLM prompt engineering
 - Response diversity and quality
 
 Addressed by:
-- Tunable similarity thresholds (currently 50% for merging)
-- Multi-word phrase extraction (1-3 grams)
-- Clear LLM prompts with examples
-- Diverse persona-based response generation
+- LLM-based semantic comparison (80% threshold for merging)
+- Semantic class categorization (user_goal, pain_point, emotion, etc.)
+- Clear LLM prompts for span extraction and clustering
+- Diverse persona-based response generation with high variability
 
 ### Performance Unknowns
 Haven't benchmarked yet, so I don't know:

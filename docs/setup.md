@@ -108,9 +108,11 @@ bun dev
 
 The application will:
 - Start Next.js development server
-- Auto-create SQLite database (`theme-evolution.db`)
+- Auto-create SQLite database (`./data/theme-evolution.db` or project root)
 - Sync database schema with TypeORM entities
 - Be available at http://localhost:3000
+
+**Note:** Database location can be configured via `DATA_DIR` environment variable. Default is `./data/theme-evolution.db`.
 
 **Output:**
 ```
@@ -137,8 +139,8 @@ You should see the Theme Evolution System interface with:
 
 1. **Application**: http://localhost:3000 should load
 2. **API**: http://localhost:3000/api/health should return `{"status":"ok"}`
-3. **Ollama**: `ollama list` should show models
-4. **Database**: `theme-evolution.db` file should exist in project root
+3. **Ollama** (if using): `ollama list` should show models
+4. **Database**: `theme-evolution.db` file should exist in `./data/` directory (or project root)
 
 ### Test the System
 
@@ -228,6 +230,10 @@ curl http://localhost:3000/api/health
 
 **Check Database:**
 ```bash
+# Default location
+sqlite3 ./data/theme-evolution.db ".tables"
+
+# Or if in project root
 sqlite3 theme-evolution.db ".tables"
 ```
 
@@ -290,8 +296,8 @@ See [Architecture](architecture.md) for detailed system design and file structur
 ### View Database
 
 ```bash
-# Using sqlite3 CLI
-sqlite3 theme-evolution.db
+# Using sqlite3 CLI (default location)
+sqlite3 ./data/theme-evolution.db
 
 # List tables
 .tables
@@ -310,6 +316,9 @@ SELECT * FROM themes LIMIT 5;
 
 ```bash
 # Delete database file (will be recreated on next start)
+rm ./data/theme-evolution.db
+
+# Or if in project root
 rm theme-evolution.db
 
 # Restart application
@@ -319,11 +328,11 @@ bun dev
 ### Backup Database
 
 ```bash
-# Create backup
-cp theme-evolution.db backup-$(date +%Y%m%d).db
+# Create backup (default location)
+cp ./data/theme-evolution.db backup-$(date +%Y%m%d).db
 
 # Restore from backup
-cp backup-20240101.db theme-evolution.db
+cp backup-20240101.db ./data/theme-evolution.db
 ```
 
 ## Production Deployment

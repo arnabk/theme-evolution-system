@@ -175,7 +175,7 @@ Example: [1, 2, 0, 1, 3]`;
           themeSpans.get(themeIdx - 1)!.push(span);
         }
       });
-    } catch (error) {
+    } catch {
       console.warn('Batch assignment failed, using pattern matching fallback');
       // Fallback: use simple pattern matching
       batch.forEach(span => {

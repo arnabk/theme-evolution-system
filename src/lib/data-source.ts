@@ -43,7 +43,7 @@ async function initializeDataSource(): Promise<DataSource> {
     const fs = await import('fs/promises');
     try {
       await fs.mkdir(dataDir, { recursive: true });
-    } catch (error) {
+    } catch {
       // Ignore if directory already exists
     }
   }

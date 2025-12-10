@@ -26,6 +26,7 @@ export function ResponsesTab({ sessionId }: ResponsesTabProps) {
     if (sessionId) {
       loadResponses();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, sessionId]);
 
   const loadResponses = async () => {

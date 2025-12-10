@@ -1,0 +1,9 @@
+# Bun configuration for tests
+[test]
+# Timeout for tests (in milliseconds)
+timeout = 30000
+# Preload test setup file
+preload = ["./src/test-setup.ts"]
+# Coverage exclusions (Bun may not support this directly, but adding for future compatibility)
+# Note: Currently, test-setup.ts and test-utils.ts should be excluded manually if needed
+

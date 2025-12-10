@@ -37,7 +37,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
   const [themeResponses, setThemeResponses] = useState<ThemeResponse[]>([]);
   const [loadingResponses, setLoadingResponses] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const currentPageRef = useRef(1);
@@ -46,6 +46,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
     if (sessionId) {
       loadThemes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   const loadThemes = async () => {
@@ -115,6 +116,7 @@ export function ThemesTab({ sessionId }: ThemesTabProps) {
       console.log(`📄 Loading page ${nextPage} for theme ${selectedTheme.id}`);
       loadThemeResponses(selectedTheme.id, nextPage, true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTheme, hasMore, loadingMore]);
 
   if (loading) {

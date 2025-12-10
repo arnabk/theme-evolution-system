@@ -287,7 +287,57 @@ bun start
 
 # Run linter
 bun run lint
+
+# Auto-fix linting issues
+bun run lint:fix
+
+# Run tests
+bun test
+
+# Run tests with coverage report
+bun test --coverage
 ```
+
+#### Testing
+
+The project includes comprehensive test coverage using Bun's built-in test runner:
+
+```bash
+# Run all tests
+bun test
+
+# Run tests with coverage
+bun test --coverage
+
+# Run specific test file
+bun test src/lib/__tests__/database.test.ts
+
+# Run tests in watch mode (auto-rerun on file changes)
+bun test --watch
+```
+
+**Coverage Reports:**
+- Coverage files are generated in `.coverage/` or `coverage/` directory
+- Includes LCOV format for integration with coverage tools
+- Summary JSON available for programmatic access
+
+#### Linting
+
+Code quality is enforced with ESLint:
+
+```bash
+# Check for linting errors
+bun run lint
+
+# Auto-fix fixable issues
+bun run lint:fix
+```
+
+The linter checks:
+- TypeScript/JavaScript syntax
+- React best practices
+- Next.js conventions
+- Code style consistency
 
 See [Architecture](architecture.md) for detailed system design and file structure.
 

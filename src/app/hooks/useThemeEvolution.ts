@@ -3,7 +3,6 @@
  */
 
 import { useState, useCallback } from 'react';
-import { getErrorMessage } from '@/lib/types';
 
 export interface Stats {
   total_responses: number;

@@ -25,6 +25,11 @@ export async function GET(
     const { themeId: themeIdStr } = await params;
     const themeId = parseInt(themeIdStr);
     
+    // Validate themeId
+    if (isNaN(themeId)) {
+      return NextResponse.json({ success: false, error: 'Invalid theme ID' }, { status: 400 });
+    }
+    
     // Get pagination params
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
@@ -41,7 +46,17 @@ export async function GET(
     }
 
     // Parse theme phrases
-    const phrases: ThemePhrase[] = theme.getPhrases();
+    let phrases: ThemePhrase[] = [];
+    if (typeof theme.getPhrases === 'function') {
+      phrases = theme.getPhrases();
+    } else if (theme.phrases) {
+      try {
+        phrases = JSON.parse(theme.phrases);
+      } catch {
+        phrases = [];
+      }
+    }
+    
     if (phrases.length === 0) {
       return NextResponse.json({
         success: true,
@@ -69,6 +84,7 @@ export async function GET(
     }> = [];
 
     for (const response of allResponses) {
+      if (!response || !response.response_text) continue;
       const highlights = findPhraseMatches(response.response_text, phrases);
       
       if (highlights.length > 0) {
@@ -93,7 +109,7 @@ export async function GET(
       total,
       page,
       pageSize,
-      hasMore: startIdx + pageSize < total,
+      hasMore: startIdx + paginatedResponses.length < total,
     });
 
   } catch (error: unknown) {

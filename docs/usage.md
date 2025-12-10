@@ -24,7 +24,7 @@ Examples:
 Click **"📝 Generate Responses"** to create 20 synthetic responses to the question.
 - Button disabled until question exists
 - Shows progress during generation
-- Takes ~10-15 seconds
+- Takes ~10-15 seconds (varies by LLM provider)
 
 ### 3. Extract Themes
 Click **"⚡ Extract Themes"** to analyze responses and extract themes.
@@ -78,6 +78,27 @@ Generate and process multiple batches to watch themes evolve:
 - Uses LLM to identify meaningful phrases with semantic classes
 - Highlights exact phrases in responses with color-coded classes
 - Shows which phrases contributed to each theme assignment
+
+## LLM Provider Performance
+
+### Recommended Providers
+
+**For Best Performance:**
+- **Gemini Flash Lite** - Fastest provider in our observations, ideal for rapid theme extraction
+- Configure in `.env`: `LLM_PROVIDER=gemini` and `GEMINI_MODEL=gemini-2.0-flash-exp`
+
+**For Development:**
+- **Ollama** (local) - No API costs, good for testing
+- Configure in `.env`: `LLM_PROVIDER=ollama` and `OLLAMA_MODEL=llama3.2:3b`
+
+**For Production:**
+- **OpenAI GPT-4o-mini** - Reliable and consistent
+- Configure in `.env`: `LLM_PROVIDER=openai` and `OPENAI_MODEL=gpt-4o-mini`
+
+**Performance Notes:**
+- Theme extraction speed varies significantly by provider
+- Gemini Flash Lite provides the fastest response times for both generation and theme processing
+- Processing time scales with number of responses (typically 1-3 seconds per response)
 
 ## API Endpoints
 
@@ -149,12 +170,14 @@ while (true) {
 **Response generation slow**
 - First run loads model (slower)
 - Subsequent runs faster
+- **Performance tip**: Gemini Flash Lite is the fastest LLM provider in our observations
 - Use smaller model for speed
 
 **Theme processing errors**
 - Check browser console
 - Verify responses exist
 - Ensure LLM provider is configured (OpenAI/Gemini API key or Ollama running)
+- **Performance tip**: For fastest theme extraction, use Gemini Flash Lite model
 
 **Data not showing**
 - Refresh page

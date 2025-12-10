@@ -2,7 +2,7 @@
  * ResponsesList - Right panel showing responses with highlighted semantic spans
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface Highlight {
   text: string;

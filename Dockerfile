@@ -1,6 +1,17 @@
 # Multi-stage build for production
 FROM oven/bun:1 AS base
 
+# Install build dependencies for native modules (sqlite3)
+# Also install Node.js/npm for sqlite3 native module compilation
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
@@ -9,8 +20,10 @@ WORKDIR /app
 COPY package.json ./
 COPY bun.lockb* ./
 
-# Install dependencies
-RUN bun install --frozen-lockfile --production
+# Install dependencies (including native modules)
+# Use npm for sqlite3 to ensure native module is built correctly
+RUN bun install --frozen-lockfile --production && \
+    cd /app && npm rebuild sqlite3 --build-from-source || npm install sqlite3 --production
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -21,6 +34,7 @@ COPY package.json ./
 COPY bun.lockb* ./
 
 # Install all dependencies (including devDependencies for build)
+# Ensure native modules are built
 RUN bun install --frozen-lockfile
 
 # Copy source code
@@ -53,6 +67,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy production dependencies
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+# Ensure sqlite3 native module is properly built for the runtime platform
+RUN cd /app && npm rebuild sqlite3 --build-from-source || npm install sqlite3 --production
 
 # Create data directory for SQLite database
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data

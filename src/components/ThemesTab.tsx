@@ -10,7 +10,7 @@ interface Theme {
   phrases?: string;  // JSON string of ThemePhrase[]
   response_count: number;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 interface Highlight {

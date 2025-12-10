@@ -32,9 +32,25 @@ export async function getDataSource(): Promise<DataSource> {
 }
 
 async function initializeDataSource(): Promise<DataSource> {
+  // Use data directory if specified (for Docker), otherwise use current directory
+  const dataDir = process.env.DATA_DIR || './data';
+  const dbPath = dataDir.endsWith('.db') 
+    ? dataDir 
+    : `${dataDir}/theme-evolution.db`;
+  
+  // Ensure directory exists (for Docker volumes)
+  if (dataDir && !dataDir.endsWith('.db')) {
+    const fs = await import('fs/promises');
+    try {
+      await fs.mkdir(dataDir, { recursive: true });
+    } catch (error) {
+      // Ignore if directory already exists
+    }
+  }
+  
   const newDataSource = new DataSource({
     type: 'sqlite',
-    database: 'theme-evolution.db',
+    database: dbPath,
     synchronize: true,
     logging: false,
     entities: [Theme, Response, Session],

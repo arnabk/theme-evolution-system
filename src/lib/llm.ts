@@ -15,19 +15,24 @@ export class LLMClient {
   private provider: string;
 
   constructor() {
-    this.provider = (process.env.LLM_PROVIDER || 'ollama').toLowerCase();
+    // Handle empty strings as undefined (CI might set empty env vars)
+    const provider = process.env.LLM_PROVIDER?.trim() || 'ollama';
+    this.provider = provider.toLowerCase();
   }
 
   private getOllamaBaseUrl(): string {
-    return process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+    // Handle empty strings as undefined
+    return process.env.OLLAMA_BASE_URL?.trim() || 'http://localhost:11434';
   }
 
   private getOpenAIApiKey(): string {
-    return process.env.OPENAI_API_KEY || '';
+    // Handle empty strings as undefined
+    return process.env.OPENAI_API_KEY?.trim() || '';
   }
 
   private getGeminiApiKey(): string {
-    return process.env.GEMINI_API_KEY || '';
+    // Handle empty strings as undefined
+    return process.env.GEMINI_API_KEY?.trim() || '';
   }
 
   async generate(options: GenerateOptions): Promise<string> {
@@ -314,12 +319,12 @@ Write 1-3 authentic sentences. Be DIFFERENT from typical corporate responses. No
   private getDefaultModel(): string {
     switch (this.provider) {
       case 'openai':
-        return process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        return process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini';
       case 'gemini':
-        return process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+        return process.env.GEMINI_MODEL?.trim() || 'gemini-1.5-flash';
       case 'ollama':
       default:
-        return process.env.OLLAMA_MODEL || 'llama3.2:3b';
+        return process.env.OLLAMA_MODEL?.trim() || 'llama3.2:3b';
     }
   }
 }

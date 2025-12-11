@@ -3,11 +3,6 @@
  * Supports: Ollama (default), Gemini, OpenAI
  */
 
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama';
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-
 export interface GenerateOptions {
   model: string;
   prompt: string;
@@ -20,7 +15,19 @@ export class LLMClient {
   private provider: string;
 
   constructor() {
-    this.provider = LLM_PROVIDER.toLowerCase();
+    this.provider = (process.env.LLM_PROVIDER || 'ollama').toLowerCase();
+  }
+
+  private getOllamaBaseUrl(): string {
+    return process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+  }
+
+  private getOpenAIApiKey(): string {
+    return process.env.OPENAI_API_KEY || '';
+  }
+
+  private getGeminiApiKey(): string {
+    return process.env.GEMINI_API_KEY || '';
   }
 
   async generate(options: GenerateOptions): Promise<string> {
@@ -36,7 +43,7 @@ export class LLMClient {
   }
 
   private async generateOllama(options: GenerateOptions): Promise<string> {
-    const url = `${OLLAMA_BASE_URL}/api/generate`;
+    const url = `${this.getOllamaBaseUrl()}/api/generate`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,7 +68,8 @@ export class LLMClient {
   }
 
   private async generateOpenAI(options: GenerateOptions): Promise<string> {
-    if (!OPENAI_API_KEY) {
+    const apiKey = this.getOpenAIApiKey();
+    if (!apiKey) {
       throw new Error('OPENAI_API_KEY not configured');
     }
 
@@ -69,7 +77,7 @@ export class LLMClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: options.model || 'gpt-4o-mini',
@@ -88,12 +96,13 @@ export class LLMClient {
   }
 
   private async generateGemini(options: GenerateOptions): Promise<string> {
-    if (!GEMINI_API_KEY) {
+    const apiKey = this.getGeminiApiKey();
+    if (!apiKey) {
       throw new Error('GEMINI_API_KEY not configured');
     }
 
     const model = options.model || 'gemini-1.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
     const response = await fetch(url, {
       method: 'POST',

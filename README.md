@@ -44,23 +44,8 @@ bun run lint:fix     # Auto-fix linting issues
 
 # Testing
 bun test             # Run all tests
-bun test --coverage  # Run tests with coverage report
+bun test:coverage  # Run tests with coverage report
 ```
-
-### Testing
-
-The project includes comprehensive test coverage:
-
-- **285 tests** across multiple test files
-- **~73% source file coverage**
-- Tests for API routes, database operations, theme evolution logic, and React components
-- Uses Bun's built-in test runner (no additional dependencies)
-
-### Continuous Integration
-
-- **GitHub Actions** runs tests and linting on every push and PR
-- **Codecov** integration for coverage tracking
-- Check the [Actions tab](https://github.com/arnabk/theme-evolution-system/actions) for CI status
 
 ---
 
@@ -78,7 +63,3 @@ The project includes comprehensive test coverage:
 - **[Project Proposal](docs/project_proposal.md)** - Original project overview
 - **[Progress Report](docs/progress_report.md)** - Implementation status
 - **[Presentation](docs/presentation.md)** - Presentation slides and overview
-
----
-
-**Repository:** https://github.com/arnabk/theme-evolution-system

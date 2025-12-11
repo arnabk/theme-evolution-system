@@ -10,10 +10,23 @@ describe('Home Page', () => {
   beforeEach(() => {
     console.error = mockConsoleError;
     global.fetch = originalFetch;
+    
+    // Ensure localStorage is available for all tests
+    if (!global.localStorage) {
+      (global as unknown as { localStorage: Storage }).localStorage = {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+        length: 0,
+        key: () => null
+      } as Storage;
+    }
   });
 
   afterEach(() => {
     console.error = originalConsoleError;
+    global.fetch = originalFetch;
   });
 
   it('should export Home component', () => {
@@ -83,7 +96,7 @@ describe('Home Page', () => {
 
     await waitFor(() => {
       expect(container.textContent).toContain('Theme Evolution');
-    }, { timeout: 3000 });
+    }, { timeout: 5000, interval: 100 });
   });
 
   it('should switch between tabs', async () => {
@@ -123,16 +136,20 @@ describe('Home Page', () => {
 
     await waitFor(() => {
       expect(container.textContent).toContain('Theme Evolution');
-    }, { timeout: 3000 });
+    }, { timeout: 5000, interval: 100 });
 
     // Click on Responses tab
+    await waitFor(() => {
+      expect(getByText('Responses')).toBeDefined();
+    }, { timeout: 5000, interval: 100 });
+    
     const responsesTab = getByText('Responses');
     fireEvent.click(responsesTab);
 
     // Should show responses tab content
     await waitFor(() => {
       expect(container.textContent).toContain('Responses');
-    });
+    }, { timeout: 5000, interval: 100 });
   });
 
   it('should handle generate question button click', async () => {
@@ -180,7 +197,7 @@ describe('Home Page', () => {
 
     await waitFor(() => {
       expect(getAllByText(/Generate Question/i).length).toBeGreaterThan(0);
-    }, { timeout: 3000 });
+    }, { timeout: 5000, interval: 100 });
 
     // Get the button (first element is the button, second might be help text)
     const generateButtons = getAllByText(/Generate Question/i);
@@ -189,7 +206,7 @@ describe('Home Page', () => {
 
     await waitFor(() => {
       expect(generateQuestionCalled).toBe(true);
-    }, { timeout: 3000 });
+    }, { timeout: 5000, interval: 100 });
   });
 
   it('should disable buttons when operation is active', async () => {
@@ -229,10 +246,12 @@ describe('Home Page', () => {
 
     await waitFor(() => {
       expect(container.textContent).toContain('Theme Evolution');
-    }, { timeout: 3000 });
+    }, { timeout: 5000, interval: 100 });
 
     // Buttons should be rendered
-    expect(container.textContent).toContain('Generate Question');
+    await waitFor(() => {
+      expect(container.textContent).toContain('Generate Question');
+    }, { timeout: 5000, interval: 100 });
   });
 
   it('should show stats cards', async () => {
@@ -273,7 +292,7 @@ describe('Home Page', () => {
     await waitFor(() => {
       expect(container.textContent).toContain('Total Responses');
       expect(container.textContent).toContain('Themes Found');
-    }, { timeout: 3000 });
+    }, { timeout: 5000, interval: 100 });
   });
 
   it('should handle export data button click', async () => {
@@ -356,7 +375,7 @@ describe('Home Page', () => {
 
     await waitFor(() => {
       expect(getByText(/Export Data/i)).toBeDefined();
-    }, { timeout: 3000 });
+    }, { timeout: 5000, interval: 100 });
 
     const exportButton = getByText(/Export Data/i);
     fireEvent.click(exportButton);

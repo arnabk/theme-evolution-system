@@ -175,18 +175,19 @@ describe('LLMClient - Provider Methods', () => {
 
   describe('generateGemini', () => {
     it('should call Gemini API correctly', async () => {
+      // Set environment variables before creating client
       process.env.LLM_PROVIDER = 'gemini';
       process.env.GEMINI_API_KEY = 'test-key';
       
       let fetchCalled = false;
       let fetchUrl = '';
-      global.fetch = (async (url: string) => {
+      global.fetch = (async (url: string | Request) => {
         fetchCalled = true;
-        fetchUrl = url;
+        fetchUrl = typeof url === 'string' ? url : url.toString();
         return {
           ok: true,
           json: async () => ({ candidates: [{ content: { parts: [{ text: 'test response' }] } }] })
-        };
+        } as Response;
       }) as unknown as typeof fetch;
       
       // Create new client after setting env

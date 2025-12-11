@@ -224,7 +224,6 @@ RESTful API endpoints for all operations:
 - **Auto-sync schema** - TypeORM creates tables automatically
 - **File-based** - `theme-evolution.db` location configurable via `DATA_DIR` env var
 - **Default location** - `./data/theme-evolution.db` (or project root if `DATA_DIR` not set)
-- **Docker location** - `/app/data/theme-evolution.db` (via `DATA_DIR` volume)
 - **No migrations** - Schema syncs on startup
 - **Lightweight** - Perfect for development and testing
 

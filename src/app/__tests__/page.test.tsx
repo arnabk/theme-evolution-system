@@ -47,10 +47,8 @@ describe('Home Page', () => {
   });
 
   it('should render main content after loading', async () => {
-    let fetchCallCount = 0;
     global.fetch = ((url: string | Request) => {
       const urlString = typeof url === 'string' ? url : (url as Request).url || url.toString();
-      fetchCallCount++;
       if (urlString.includes('/api/stats')) {
         return Promise.resolve({
           ok: true,
@@ -333,7 +331,6 @@ describe('Home Page', () => {
         const anchor = originalCreateElement('a');
         anchor.href = '';
         anchor.download = '';
-        const originalClick = anchor.click.bind(anchor);
         anchor.click = () => {
           // Export functionality triggered
         };

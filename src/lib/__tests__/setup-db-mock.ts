@@ -5,7 +5,7 @@
 
 import { spyOn } from 'bun:test';
 import { mockDb } from './database-mock';
-import { getMockDataSource, resetMockDataSource } from './data-source-mock';
+import { getMockDataSource } from './data-source-mock';
 
 // Type for Bun's spy object
 interface BunSpy {
@@ -37,7 +37,7 @@ type DatabaseMethodName =
 
 let isSetup = false;
 let spies: BunSpy[] = [];
-let originalMethods: Map<DatabaseMethodName, unknown> = new Map();
+const originalMethods: Map<DatabaseMethodName, unknown> = new Map();
 
 // Track all active spies across the test suite
 const activeSpies = new Set<BunSpy>();
@@ -52,7 +52,7 @@ export function restore() {
     if (spy && typeof spy.mockRestore === 'function') {
       try {
         spy.mockRestore();
-      } catch (e) {
+      } catch {
         // Ignore errors if spy is already restored
       }
     }
@@ -63,7 +63,7 @@ export function restore() {
     if (spy && typeof spy.mockRestore === 'function') {
       try {
         spy.mockRestore();
-      } catch (e) {
+      } catch {
         // Ignore errors if spy is already restored
       }
     }
@@ -104,7 +104,7 @@ export async function setupDatabaseMocks(force = false) {
       if (spy && typeof spy.mockRestore === 'function') {
         try {
           spy.mockRestore();
-        } catch (e) {
+        } catch {
           // Ignore errors if spy is already restored
         }
       }
@@ -113,7 +113,7 @@ export async function setupDatabaseMocks(force = false) {
       if (spy && typeof spy.mockRestore === 'function') {
         try {
           spy.mockRestore();
-        } catch (e) {
+        } catch {
           // Ignore errors if spy is already restored
         }
       }

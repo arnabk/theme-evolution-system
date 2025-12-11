@@ -322,14 +322,12 @@ describe('ResponsesList', () => {
 
   it('should set up intersection observer when conditions are met', () => {
     const handleLoadMore = () => {};
-    let observerCreated = false;
     
     // Track if IntersectionObserver is called
     const OriginalObserver = globalThis.IntersectionObserver;
     globalThis.IntersectionObserver = class extends OriginalObserver {
       constructor(callback?: IntersectionObserverCallback, options?: IntersectionObserverInit) {
         super(callback, options);
-        observerCreated = true;
       }
     } as unknown as typeof IntersectionObserver;
     

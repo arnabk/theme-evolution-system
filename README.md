@@ -11,23 +11,6 @@
 
 ## Quick Start
 
-### Option 1: Docker (Recommended for Production)
-
-```bash
-# 1. Create .env file (see docker-compose.yml for variables)
-cp .env.example .env  # Edit as needed
-
-# 2. Start with Docker Compose
-docker-compose up -d
-
-# 3. Access the application
-open http://localhost:3000
-```
-
-See **[Docker Guide](docs/docker.md)** for detailed instructions.
-
-### Option 2: Local Development
-
 ```bash
 # 1. Install Ollama and models
 brew install ollama
@@ -68,12 +51,10 @@ bun test --coverage  # Run tests with coverage report
 
 The project includes comprehensive test coverage:
 
-- **117+ tests** across 22 test files
+- **285 tests** across multiple test files
 - **~73% source file coverage**
 - Tests for API routes, database operations, theme evolution logic, and React components
 - Uses Bun's built-in test runner (no additional dependencies)
-
-See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage information.
 
 ### Continuous Integration
 
@@ -85,13 +66,18 @@ See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage information.
 
 ## Documentation
 
-- **[Setup Guide](docs/setup.md)** - Local installation and configuration
-- **[Docker Guide](docs/docker.md)** - Docker production setup
+### Getting Started
+- **[Setup Guide](docs/setup.md)** - Installation and configuration
 - **[Usage Guide](docs/usage.md)** - How to use the system
+
+### Technical Documentation
 - **[Architecture](docs/architecture.md)** - System design and components  
 - **[Database Schema](docs/database_schema.md)** - TypeORM entities and auto-sync
+
+### Project Documentation
 - **[Project Proposal](docs/project_proposal.md)** - Original project overview
 - **[Progress Report](docs/progress_report.md)** - Implementation status
+- **[Presentation](docs/presentation.md)** - Presentation slides and overview
 
 ---
 

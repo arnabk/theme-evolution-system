@@ -7,8 +7,8 @@ This document describes the database schema for the Theme Evolution System.
 The system uses **SQLite** with **TypeORM** for database operations. The schema is automatically created and synchronized on application startup - no manual migrations required.
 
 **Database File**: `theme-evolution.db` (SQLite file location depends on environment)
-- **Development**: `./data/theme-evolution.db` (or project root if `DATA_DIR` not set)
-- **Docker**: `/app/data/theme-evolution.db` (set via `DATA_DIR` environment variable)
+- **Default**: `./data/theme-evolution.db` (or project root if `DATA_DIR` not set)
+- **Custom location**: Set via `DATA_DIR` environment variable
 
 ## TypeORM Entities
 

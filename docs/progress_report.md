@@ -28,7 +28,7 @@ The system was fully rewritten in TypeScript for better type safety and modern t
 - **Framework**: Next.js 15 with App Router and React Server Components
 - **Language**: 100% TypeScript (no Python)
 - **Database**: SQLite with TypeORM (auto-schema sync, no migrations needed)
-- **LLM**: Ollama running locally (no Docker containers)
+- **LLM**: Ollama running locally
 - **Frontend**: React 19 with modern hooks and server components
 - **Styling**: Tailwind CSS with gradient effects
 
@@ -89,7 +89,7 @@ Haven't benchmarked formally yet. Need to:
 Initially proposed Python implementation, but chose TypeScript for:
 - Better type safety and IDE support
 - Modern tooling (Bun, Next.js)
-- Simpler deployment (no Docker needed)
+- Simpler deployment
 - Faster development iteration
 - Single language full-stack
 

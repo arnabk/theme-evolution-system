@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import React from 'react';
 import { useThemeEvolution } from '../useThemeEvolution';
 
@@ -226,10 +226,8 @@ describe('useThemeEvolution', () => {
   });
 
   it('should generate question successfully', async () => {
-    let callCount = 0;
     global.fetch = ((url: string | Request) => {
       const urlString = typeof url === 'string' ? url : (url as Request).url || url.toString();
-      callCount++;
       if (urlString.includes('/api/questions/generate')) {
         return Promise.resolve({
           ok: true,
@@ -277,10 +275,8 @@ describe('useThemeEvolution', () => {
   });
 
   it('should generate responses successfully', async () => {
-    let callCount = 0;
     global.fetch = ((url: string | Request) => {
       const urlString = typeof url === 'string' ? url : (url as Request).url || url.toString();
-      callCount++;
       if (urlString.includes('/api/responses/generate')) {
         return Promise.resolve({
           ok: true,

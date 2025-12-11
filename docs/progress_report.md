@@ -58,15 +58,11 @@ Need to write tests using modern TypeScript testing tools:
 - Bun's built-in test runner for unit tests
 - React Testing Library for component tests
 - Integration tests for API routes
-- E2E tests with Playwright (planned)
 
 ### Evaluation Metrics
 The evaluation framework is documented but not implemented yet. Per the proposal, I need to implement:
 - **Performance Testing**: Processing speed, memory usage, and scalability with datasets of varying sizes
-- **Accuracy Testing**: Compare theme extraction results against baseline methods (using synthetic data)
 - **Scalability Testing**: Test with large synthetic datasets to verify context window handling
-- **Statistical Validation**: Analyze theme distribution and consistency
-- **Comparative Analysis**: Benchmark against single-shot LLM processing approaches
 
 ### Performance
 Haven't benchmarked formally yet. Need to:
@@ -127,17 +123,6 @@ Haven't benchmarked yet, so I don't know:
 - SQLite vs PostgreSQL performance comparison
 - Theme evolution quality over many batches
 - Optimal batch size for processing
-
----
-
-## Next Steps
-
-1. **Implement evaluation metrics** - Start tracking performance, accuracy, and scalability metrics as outlined in the proposal
-2. **Write comprehensive tests** - Unit, integration, and component tests with Bun test
-3. **Benchmark performance** - Test with varying dataset sizes to measure scalability (as proposed)
-4. **Comparative analysis** - Benchmark against single-shot LLM processing approaches
-5. **Optimize theme extraction** - Fine-tune prompts and thresholds based on evaluation results
-6. **Complete project report** - Document architecture, results, and insights
 
 ---
 

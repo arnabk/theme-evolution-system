@@ -27,7 +27,7 @@ jobs:
         run: bun run lint
 
       - name: Run tests with coverage
-        run: bun test --coverage
+        run: bun test:coverage
         env:
           # Set test environment variables if needed
           DATA_DIR: ./test-data
